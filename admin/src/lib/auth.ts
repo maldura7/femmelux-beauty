@@ -1,4 +1,5 @@
 import type { User } from '@/types';
+import type { AuthUser } from '@/lib/api';
 
 // ============================================
 // STORAGE KEYS
@@ -169,15 +170,28 @@ export function canAccessAdmin(): boolean {
 
 /**
  * Save all auth data (tokens + user)
+ * Accepts AuthUser from login API and converts to User format for storage
  */
 export function saveAuthData(data: {
   accessToken: string;
   refreshToken: string;
-  user: User;
+  user: AuthUser;
 }): void {
   saveToken(data.accessToken);
   saveRefreshToken(data.refreshToken);
-  saveUser(data.user);
+  // Convert AuthUser to User format for storage
+  const userToStore: User = {
+    id: data.user.id,
+    email: data.user.email,
+    firstName: data.user.name.split(' ')[0] || data.user.name,
+    lastName: data.user.name.split(' ').slice(1).join(' ') || '',
+    role: data.user.role,
+    brandId: data.user.brandId || undefined,
+    status: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  saveUser(userToStore);
 }
 
 /**
