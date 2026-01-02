@@ -307,7 +307,7 @@ export default function ProductPage() {
               {product.category && (
                 <div className="mb-6">
                   <Link
-                    href={`/categories/${product.category.slug}`}
+                    href={`/categories/${product.category.slug}` as '/'}
                     className="inline-flex items-center px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm rounded-full transition-colors"
                   >
                     {product.category.name}
