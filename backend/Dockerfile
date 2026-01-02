@@ -1,6 +1,9 @@
 # Backend Dockerfile
 FROM node:20-alpine AS base
 
+# Install OpenSSL and other dependencies needed by Prisma
+RUN apk add --no-cache openssl openssl-dev libc6-compat
+
 # Install dependencies only when needed
 FROM base AS deps
 WORKDIR /app
@@ -12,7 +15,7 @@ COPY prisma ./prisma/
 # Install dependencies (include all for prisma CLI)
 RUN npm install && npm cache clean --force
 
-# Generate Prisma client
+# Generate Prisma client with correct binary targets
 RUN npx prisma generate
 
 # Rebuild the source code only when needed
