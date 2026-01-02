@@ -6,6 +6,9 @@ const nextConfig = {
   // Output standalone build for Docker
   output: 'standalone',
 
+  // Base path for deployment under /admin route
+  basePath: process.env.NODE_ENV === 'production' ? '/admin' : '',
+
   // Configure image domains for Next.js Image component
   images: {
     remotePatterns: [
@@ -51,12 +54,12 @@ const nextConfig = {
     ];
   },
 
-  // Redirects
+  // Redirects - basePath is automatically prepended
   async redirects() {
     return [
       {
         source: '/',
-        destination: '/dashboard',
+        destination: '/login',
         permanent: false,
       },
     ];
