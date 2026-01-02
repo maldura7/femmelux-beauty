@@ -13,15 +13,20 @@ import axios, {
 // In production browser, use relative URL so requests go through DigitalOcean routing
 // In development or SSR, use the full URL
 function getApiUrl(): string {
-  // If explicitly set, use that
-  if (process.env.NEXT_PUBLIC_API_URL) {
-    return process.env.NEXT_PUBLIC_API_URL;
+  // In browser, check if we're on localhost or production
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+
+    // If we're NOT on localhost, use relative /api path
+    // This works with DigitalOcean's routing which sends /api/* to the backend
+    if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+      return '/api';
+    }
   }
 
-  // In browser during production, use relative URL
-  // DigitalOcean routes /api/* to the backend service
-  if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') {
-    return '/api';
+  // If NEXT_PUBLIC_API_URL is explicitly set and non-empty, use it
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
   }
 
   // Default for development
