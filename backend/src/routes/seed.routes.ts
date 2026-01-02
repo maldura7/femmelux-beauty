@@ -1,9 +1,56 @@
 import { Router, Request, Response } from 'express';
 import { PrismaClient, UserRole } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 
+const execAsync = promisify(exec);
 const router = Router();
 const prisma = new PrismaClient();
+
+/**
+ * @route   POST /api/seed/migrate
+ * @desc    Run database migrations (db push)
+ * @access  Public (protected by secret key)
+ */
+router.post('/migrate', async (req: Request, res: Response): Promise<void> => {
+  const seedKey = req.headers['x-seed-key'] || req.query.key;
+
+  if (seedKey !== 'femmelux-seed-2024-init') {
+    res.status(403).json({
+      success: false,
+      message: 'Invalid seed key',
+    });
+    return;
+  }
+
+  try {
+    console.log('Running database migration (db push)...');
+
+    // Try to run prisma db push
+    const { stdout, stderr } = await execAsync('npx prisma db push --accept-data-loss', {
+      cwd: process.cwd(),
+      env: process.env,
+    });
+
+    console.log('Migration stdout:', stdout);
+    if (stderr) console.log('Migration stderr:', stderr);
+
+    res.json({
+      success: true,
+      message: 'Database migration completed',
+      output: stdout,
+      errors: stderr || null,
+    });
+  } catch (error) {
+    console.error('Migration error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to run migration',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
 
 /**
  * @route   POST /api/seed
