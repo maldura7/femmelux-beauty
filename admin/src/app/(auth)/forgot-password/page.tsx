@@ -1,11 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import { Button, Input } from '@/components/ui';
 import { forgotPassword } from '@/lib/api';
+import { getPath } from '@/lib/navigation';
 
 interface ForgotPasswordFormData {
   email: string;
@@ -135,8 +135,8 @@ export default function ForgotPasswordPage() {
           )}
 
           <p className="mt-8 text-center">
-            <Link
-              href="/login"
+            <a
+              href={getPath('/login')}
               className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -148,7 +148,7 @@ export default function ForgotPasswordPage() {
                 />
               </svg>
               Back to sign in
-            </Link>
+            </a>
           </p>
         </div>
       </div>

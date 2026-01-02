@@ -1,12 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import { Button, Input } from '@/components/ui';
 import { register as registerApi } from '@/lib/api';
+import { getPath } from '@/lib/navigation';
 
 interface RegisterFormData {
   firstName: string;
@@ -54,7 +54,7 @@ export default function RegisterPage() {
       });
 
       toast.success('Account created successfully! Please sign in.');
-      router.push('/login');
+      window.location.href = getPath('/login');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Registration failed');
     } finally {
@@ -185,13 +185,13 @@ export default function RegisterPage() {
               />
               <span className="ml-2 text-sm text-gray-600">
                 I agree to the{' '}
-                <Link href="/terms" className="text-primary-500 hover:text-primary-600">
+                <a href={getPath('/terms')} className="text-primary-500 hover:text-primary-600">
                   Terms of Service
-                </Link>{' '}
+                </a>{' '}
                 and{' '}
-                <Link href="/privacy" className="text-primary-500 hover:text-primary-600">
+                <a href={getPath('/privacy')} className="text-primary-500 hover:text-primary-600">
                   Privacy Policy
-                </Link>
+                </a>
               </span>
             </label>
             {errors.agreeToTerms && (
@@ -205,9 +205,9 @@ export default function RegisterPage() {
 
           <p className="mt-6 text-center text-sm text-gray-600">
             Already have an account?{' '}
-            <Link href="/login" className="text-primary-500 hover:text-primary-600 font-medium">
+            <a href={getPath('/login')} className="text-primary-500 hover:text-primary-600 font-medium">
               Sign in
-            </Link>
+            </a>
           </p>
         </div>
       </div>

@@ -1,13 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import { Button, Input } from '@/components/ui';
 import { login as loginApi } from '@/lib/api';
 import { saveAuthData } from '@/lib/auth';
+import { getPath } from '@/lib/navigation';
 
 interface LoginFormData {
   email: string;
@@ -119,12 +119,12 @@ export default function LoginPage() {
                 />
                 <span className="ml-2 text-sm text-gray-600">Remember me</span>
               </label>
-              <Link
-                href="/forgot-password"
+              <a
+                href={getPath('/forgot-password')}
                 className="text-sm text-primary-500 hover:text-primary-600 font-medium"
               >
                 Forgot password?
-              </Link>
+              </a>
             </div>
 
             <Button type="submit" className="w-full" size="lg" isLoading={isLoading}>
@@ -134,9 +134,9 @@ export default function LoginPage() {
 
           <p className="mt-6 text-center text-sm text-gray-600">
             Don&apos;t have an account?{' '}
-            <Link href="/register" className="text-primary-500 hover:text-primary-600 font-medium">
+            <a href={getPath('/register')} className="text-primary-500 hover:text-primary-600 font-medium">
               Sign up
-            </Link>
+            </a>
           </p>
         </div>
       </div>

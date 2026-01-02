@@ -17,6 +17,7 @@ import {
   changePassword as changePasswordApi,
   logout as logoutApi,
 } from '@/lib/api/auth.api';
+import { getPath } from '@/lib/navigation';
 import type { User } from '@/types';
 import type { AuthResponse } from '@/lib/auth';
 
@@ -72,7 +73,7 @@ export function useAuth() {
       });
       queryClient.setQueryData(['user'], data.user);
       toast.success('Welcome back!');
-      router.push('/dashboard');
+      window.location.href = getPath('/dashboard');
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -90,7 +91,7 @@ export function useAuth() {
       });
       queryClient.setQueryData(['user'], data.user);
       toast.success('Account created successfully!');
-      router.push('/dashboard');
+      window.location.href = getPath('/dashboard');
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -104,13 +105,13 @@ export function useAuth() {
       clearAuth();
       queryClient.clear();
       toast.success('Logged out successfully');
-      router.push('/login');
+      window.location.href = getPath('/login');
     },
     onError: () => {
       // Still clear and redirect even on error
       clearAuth();
       queryClient.clear();
-      router.push('/login');
+      window.location.href = getPath('/login');
     },
   });
 
