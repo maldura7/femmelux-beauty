@@ -389,7 +389,7 @@ export default function ContactPage() {
                   </li>
                   <li>
                     <Link
-                      href="/apply"
+                      href="/register"
                       className="flex items-center gap-3 text-gray-600 hover:text-primary-600 transition-colors"
                     >
                       <span className="text-primary-500">→</span>

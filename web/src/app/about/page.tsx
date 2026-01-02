@@ -179,7 +179,7 @@ export default function AboutPage() {
             </p>
             <div className="flex flex-wrap gap-4">
               <Link
-                href="/apply"
+                href="/register"
                 className="px-8 py-4 bg-primary-500 hover:bg-primary-600 text-white font-semibold rounded-lg transition-all duration-300 shadow-lg shadow-primary-500/30 hover:shadow-xl hover:shadow-primary-500/40"
               >
                 Become a Partner
@@ -519,7 +519,7 @@ export default function AboutPage() {
           </p>
           <div className="flex flex-wrap justify-center gap-4">
             <Link
-              href="/apply"
+              href="/register"
               className="px-8 py-4 bg-white text-primary-600 font-semibold rounded-lg hover:bg-gray-100 transition-colors shadow-lg"
             >
               Apply for Partnership
