@@ -206,7 +206,7 @@ export default function BrandProductsPage() {
                   </div>
                 )}
                 <div className="absolute top-2 right-2">
-                  <Badge variant={product.status ? 'success' : 'error'} size="sm">
+                  <Badge variant={product.status ? 'success' : 'error'}>
                     {product.status ? 'Active' : 'Inactive'}
                   </Badge>
                 </div>

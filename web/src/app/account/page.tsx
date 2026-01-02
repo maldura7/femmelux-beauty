@@ -62,7 +62,7 @@ export default function AccountDashboard() {
           Manage your orders, track shipments, and update your profile from your account dashboard.
         </p>
 
-        {user?.customer && !user.customer.isApproved && (
+        {user?.accountStatus === 'PENDING' && (
           <div className="mt-4 p-4 bg-white/20 rounded-lg">
             <p className="text-sm font-medium">
               Your wholesale account is pending approval. You&apos;ll receive an email once it&apos;s
@@ -181,34 +181,36 @@ export default function AccountDashboard() {
       </div>
 
       {/* Business Info */}
-      {user?.customer && (
+      {user?.businessName && (
         <div className="bg-white border border-gray-200 rounded-xl p-6">
           <h2 className="text-lg font-semibold text-secondary-800 mb-4">Business Information</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <p className="text-sm text-gray-500 mb-1">Business Name</p>
-              <p className="font-medium text-secondary-800">{user.customer.businessName}</p>
+              <p className="font-medium text-secondary-800">{user.businessName}</p>
             </div>
-            <div>
-              <p className="text-sm text-gray-500 mb-1">Business Type</p>
-              <p className="font-medium text-secondary-800">{user.customer.businessType}</p>
-            </div>
-            {user.customer.taxId && (
+            {user.businessType && (
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Business Type</p>
+                <p className="font-medium text-secondary-800">{user.businessType}</p>
+              </div>
+            )}
+            {user.taxId && (
               <div>
                 <p className="text-sm text-gray-500 mb-1">Tax ID</p>
-                <p className="font-medium text-secondary-800">{user.customer.taxId}</p>
+                <p className="font-medium text-secondary-800">{user.taxId}</p>
               </div>
             )}
             <div>
               <p className="text-sm text-gray-500 mb-1">Account Status</p>
               <span
                 className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                  user.customer.isApproved
+                  user.accountStatus === 'APPROVED'
                     ? 'bg-green-100 text-green-800'
                     : 'bg-amber-100 text-amber-800'
                 }`}
               >
-                {user.customer.isApproved ? 'Approved' : 'Pending Approval'}
+                {user.accountStatus === 'APPROVED' ? 'Approved' : 'Pending Approval'}
               </span>
             </div>
           </div>
