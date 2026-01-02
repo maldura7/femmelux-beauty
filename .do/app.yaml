@@ -40,10 +40,10 @@ services:
         value: ${femmelux-db.DATABASE_URL}
       - key: JWT_ACCESS_SECRET
         scope: RUN_TIME
-        type: SECRET
+        value: "femmelux-jwt-access-secret-prod-2024-change-me-in-production"
       - key: JWT_REFRESH_SECRET
         scope: RUN_TIME
-        type: SECRET
+        value: "femmelux-jwt-refresh-secret-prod-2024-change-me-in-production"
       - key: JWT_ACCESS_EXPIRES_IN
         value: "15m"
       - key: JWT_REFRESH_EXPIRES_IN
@@ -51,23 +51,25 @@ services:
       - key: CORS_ORIGINS
         scope: RUN_TIME
         value: ${web.PUBLIC_URL},${admin.PUBLIC_URL}
+      # Redis is optional - leave empty if not using
       - key: REDIS_URL
         scope: RUN_TIME
-        type: SECRET
+        value: ""
+      # SMTP is optional - configure for email functionality
       - key: SMTP_HOST
         scope: RUN_TIME
-        type: SECRET
+        value: ""
       - key: SMTP_PORT
         value: "587"
       - key: SMTP_USER
         scope: RUN_TIME
-        type: SECRET
+        value: ""
       - key: SMTP_PASS
         scope: RUN_TIME
-        type: SECRET
+        value: ""
       - key: SMTP_FROM
         scope: RUN_TIME
-        type: SECRET
+        value: ""
 
   # Admin Panel (Next.js)
   - name: admin
