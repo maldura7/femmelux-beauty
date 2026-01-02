@@ -1,0 +1,314 @@
+@import "tailwindcss";
+
+/* ==========================================
+   FemmeLux Beauty - Customer Website Theme
+   ========================================== */
+
+:root {
+  /* Brand Colors */
+  --color-primary-50: #faf8f0;
+  --color-primary-100: #f5f0dc;
+  --color-primary-200: #ebe0b9;
+  --color-primary-300: #dfcc8c;
+  --color-primary-400: #d4b85f;
+  --color-primary-500: #D4AF37; /* Gold - Primary Brand Color */
+  --color-primary-600: #b8962e;
+  --color-primary-700: #967725;
+  --color-primary-800: #7a5f21;
+  --color-primary-900: #654d1f;
+
+  --color-secondary-50: #f5f5f5;
+  --color-secondary-100: #e8e8e8;
+  --color-secondary-200: #d1d1d1;
+  --color-secondary-300: #b0b0b0;
+  --color-secondary-400: #888888;
+  --color-secondary-500: #6a6a6a;
+  --color-secondary-600: #545454;
+  --color-secondary-700: #444444;
+  --color-secondary-800: #1A1A1A; /* Black - Secondary Brand Color */
+  --color-secondary-900: #0d0d0d;
+
+  --color-accent-50: #fdf8f8;
+  --color-accent-100: #F8E8E8; /* Soft Pink - Accent Color */
+  --color-accent-200: #f5d5d5;
+  --color-accent-300: #edb8b8;
+  --color-accent-400: #e29090;
+  --color-accent-500: #d46a6a;
+  --color-accent-600: #bf4c4c;
+  --color-accent-700: #a03d3d;
+  --color-accent-800: #853636;
+  --color-accent-900: #713232;
+
+  /* Semantic Colors */
+  --color-success-50: #ecfdf5;
+  --color-success-100: #d1fae5;
+  --color-success-500: #10b981;
+  --color-success-600: #059669;
+  --color-success-700: #047857;
+
+  --color-warning-50: #fffbeb;
+  --color-warning-100: #fef3c7;
+  --color-warning-500: #f59e0b;
+  --color-warning-600: #d97706;
+  --color-warning-700: #b45309;
+
+  --color-error-50: #fef2f2;
+  --color-error-100: #fee2e2;
+  --color-error-500: #ef4444;
+  --color-error-600: #dc2626;
+  --color-error-700: #b91c1c;
+
+  --color-info-50: #eff6ff;
+  --color-info-100: #dbeafe;
+  --color-info-500: #3b82f6;
+  --color-info-600: #2563eb;
+  --color-info-700: #1d4ed8;
+
+  /* Background & Text */
+  --background: #ffffff;
+  --foreground: #333333;
+}
+
+@theme inline {
+  /* Colors */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  /* Primary (Gold) */
+  --color-primary-50: var(--color-primary-50);
+  --color-primary-100: var(--color-primary-100);
+  --color-primary-200: var(--color-primary-200);
+  --color-primary-300: var(--color-primary-300);
+  --color-primary-400: var(--color-primary-400);
+  --color-primary-500: var(--color-primary-500);
+  --color-primary-600: var(--color-primary-600);
+  --color-primary-700: var(--color-primary-700);
+  --color-primary-800: var(--color-primary-800);
+  --color-primary-900: var(--color-primary-900);
+
+  /* Secondary (Black) */
+  --color-secondary-50: var(--color-secondary-50);
+  --color-secondary-100: var(--color-secondary-100);
+  --color-secondary-200: var(--color-secondary-200);
+  --color-secondary-300: var(--color-secondary-300);
+  --color-secondary-400: var(--color-secondary-400);
+  --color-secondary-500: var(--color-secondary-500);
+  --color-secondary-600: var(--color-secondary-600);
+  --color-secondary-700: var(--color-secondary-700);
+  --color-secondary-800: var(--color-secondary-800);
+  --color-secondary-900: var(--color-secondary-900);
+
+  /* Accent (Soft Pink) */
+  --color-accent-50: var(--color-accent-50);
+  --color-accent-100: var(--color-accent-100);
+  --color-accent-200: var(--color-accent-200);
+  --color-accent-300: var(--color-accent-300);
+  --color-accent-400: var(--color-accent-400);
+  --color-accent-500: var(--color-accent-500);
+  --color-accent-600: var(--color-accent-600);
+  --color-accent-700: var(--color-accent-700);
+  --color-accent-800: var(--color-accent-800);
+  --color-accent-900: var(--color-accent-900);
+
+  /* Semantic Colors */
+  --color-success-50: var(--color-success-50);
+  --color-success-100: var(--color-success-100);
+  --color-success-500: var(--color-success-500);
+  --color-success-600: var(--color-success-600);
+  --color-success-700: var(--color-success-700);
+
+  --color-warning-50: var(--color-warning-50);
+  --color-warning-100: var(--color-warning-100);
+  --color-warning-500: var(--color-warning-500);
+  --color-warning-600: var(--color-warning-600);
+  --color-warning-700: var(--color-warning-700);
+
+  --color-error-50: var(--color-error-50);
+  --color-error-100: var(--color-error-100);
+  --color-error-500: var(--color-error-500);
+  --color-error-600: var(--color-error-600);
+  --color-error-700: var(--color-error-700);
+
+  --color-info-50: var(--color-info-50);
+  --color-info-100: var(--color-info-100);
+  --color-info-500: var(--color-info-500);
+  --color-info-600: var(--color-info-600);
+  --color-info-700: var(--color-info-700);
+
+  /* Typography */
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Playfair Display", ui-serif, Georgia, serif;
+  --font-mono: ui-monospace, monospace;
+}
+
+/* Base Styles */
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ==========================================
+   Custom Component Styles
+   ========================================== */
+
+/* Buttons */
+.btn {
+  @apply inline-flex items-center justify-center px-4 py-2 font-medium rounded-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.btn-primary {
+  @apply bg-primary-500 text-white hover:bg-primary-600 focus:ring-primary-500;
+}
+
+.btn-secondary {
+  @apply bg-secondary-800 text-white hover:bg-secondary-700 focus:ring-secondary-800;
+}
+
+.btn-outline {
+  @apply border-2 border-primary-500 text-primary-600 bg-transparent hover:bg-primary-50 focus:ring-primary-500;
+}
+
+.btn-ghost {
+  @apply text-secondary-600 hover:bg-secondary-100 focus:ring-secondary-500;
+}
+
+.btn-sm {
+  @apply px-3 py-1.5 text-sm;
+}
+
+.btn-lg {
+  @apply px-6 py-3 text-lg;
+}
+
+/* Form Inputs */
+.input {
+  @apply w-full px-4 py-2.5 border border-secondary-200 rounded-md bg-white text-secondary-800 placeholder-secondary-400 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500;
+}
+
+.input-error {
+  @apply border-error-500 focus:ring-error-500 focus:border-error-500;
+}
+
+.label {
+  @apply block text-sm font-medium text-secondary-700 mb-1.5;
+}
+
+/* Cards */
+.card {
+  @apply bg-white rounded-lg shadow-sm border border-secondary-100 overflow-hidden;
+}
+
+.card-hover {
+  @apply hover:shadow-md hover:border-secondary-200 transition-all duration-200;
+}
+
+/* Links */
+a {
+  @apply transition-colors duration-200;
+}
+
+/* Headings */
+h1, h2, h3, h4, h5, h6 {
+  @apply font-semibold text-secondary-800;
+}
+
+/* Badge */
+.badge {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+}
+
+.badge-primary {
+  @apply bg-primary-100 text-primary-700;
+}
+
+.badge-success {
+  @apply bg-success-100 text-success-700;
+}
+
+.badge-warning {
+  @apply bg-warning-100 text-warning-700;
+}
+
+.badge-error {
+  @apply bg-error-100 text-error-700;
+}
+
+/* Container */
+.container {
+  @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+}
+
+/* Section spacing */
+.section {
+  @apply py-12 md:py-16 lg:py-20;
+}
+
+/* Product Grid */
+.product-grid {
+  @apply grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6;
+}
+
+/* Aspect Ratio */
+.aspect-product {
+  aspect-ratio: 3/4;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-secondary-100);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-secondary-300);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-secondary-400);
+}
+
+/* Selection */
+::selection {
+  background: var(--color-primary-200);
+  color: var(--color-secondary-800);
+}
+
+/* Focus visible for accessibility */
+:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.4s ease-out;
+}

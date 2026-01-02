@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" fill="none">
+  <rect width="400" height="300" fill="#FEFCE8"/>
+  <rect x="100" y="50" width="200" height="150" rx="20" fill="#FEF3C7"/>
+  <circle cx="200" cy="125" r="45" fill="#FDE68A"/>
+  <path d="M200 90 L220 130 L180 130 Z" fill="#FCD34D"/>
+  <rect x="175" y="125" width="50" height="30" rx="5" fill="#FCD34D"/>
+  <text x="200" y="240" text-anchor="middle" fill="#92400E" font-family="system-ui, sans-serif" font-size="16" font-weight="500">Brand Logo</text>
+</svg>
