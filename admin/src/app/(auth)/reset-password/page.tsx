@@ -39,7 +39,7 @@ function ResetPasswordForm() {
 
     setIsLoading(true);
     try {
-      await resetPassword(token, data.password);
+      await resetPassword({ token, password: data.password });
       setIsSuccess(true);
       toast.success('Password reset successfully!');
     } catch (error) {
