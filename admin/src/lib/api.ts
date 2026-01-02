@@ -9,6 +9,26 @@ import axios, {
 // CONFIGURATION
 // ============================================
 
+// Determine API URL based on environment
+// In production browser, use relative URL so requests go through DigitalOcean routing
+// In development or SSR, use the full URL
+function getApiUrl(): string {
+  // If explicitly set, use that
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+
+  // In browser during production, use relative URL
+  // DigitalOcean routes /api/* to the backend service
+  if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') {
+    return '/api';
+  }
+
+  // Default for development
+  return 'http://localhost:4000/api';
+}
+
+// Initial URL - will be updated dynamically in browser
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 const TIMEOUT = 30000; // 30 seconds
 
@@ -62,6 +82,12 @@ const api: AxiosInstance = axios.create({
 
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
+    // Dynamically set baseURL in browser to handle production routing
+    // This ensures we use /api in production browser instead of localhost
+    if (typeof window !== 'undefined') {
+      config.baseURL = getApiUrl();
+    }
+
     // Skip token for SSR
     if (typeof window === 'undefined') {
       return config;
@@ -74,7 +100,7 @@ api.interceptors.request.use(
 
     // Log requests in development
     if (process.env.NODE_ENV === 'development') {
-      console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`);
+      console.log(`[API] ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`);
     }
 
     return config;
@@ -109,7 +135,7 @@ api.interceptors.response.use(
 
         // Use a fresh axios instance to avoid interceptor loops
         const response = await axios.post<ApiResponse<{ accessToken: string; refreshToken: string }>>(
-          `${API_URL}/auth/refresh-token`,
+          `${getApiUrl()}/auth/refresh-token`,
           { refreshToken }
         );
 
