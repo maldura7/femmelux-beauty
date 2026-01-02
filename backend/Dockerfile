@@ -12,7 +12,7 @@ WORKDIR /app
 COPY package*.json ./
 COPY prisma ./prisma/
 
-# Install dependencies (include all for prisma CLI)
+# Install ALL dependencies (including dev deps for prisma CLI)
 RUN npm install && npm cache clean --force
 
 # Generate Prisma client with correct binary targets
@@ -43,7 +43,7 @@ ENV NODE_ENV=production
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 expressjs
 
-# Copy necessary files
+# Copy necessary files from builder (includes all node_modules with prisma CLI)
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
@@ -55,6 +55,9 @@ RUN chmod +x scripts/start.sh
 
 # Create uploads directory
 RUN mkdir -p uploads && chown -R expressjs:nodejs uploads
+
+# Ensure node_modules binaries are accessible
+ENV PATH="/app/node_modules/.bin:$PATH"
 
 USER expressjs
 

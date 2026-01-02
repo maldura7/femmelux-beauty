@@ -11,8 +11,17 @@ echo "DATABASE_URL is set: $(if [ -n "$DATABASE_URL" ]; then echo 'yes'; else ec
   MAX_RETRIES=10
   RETRY_COUNT=0
 
+  # Use prisma from node_modules/.bin directly
+  PRISMA_CMD="./node_modules/.bin/prisma"
+
+  # Fallback to npx if direct path doesn't work
+  if [ ! -f "$PRISMA_CMD" ]; then
+    PRISMA_CMD="npx prisma"
+  fi
+
   while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-    if npx prisma migrate deploy 2>&1; then
+    echo "Migration attempt $((RETRY_COUNT + 1))..."
+    if $PRISMA_CMD migrate deploy 2>&1; then
       echo "Database migrations completed successfully!"
       break
     fi
@@ -25,7 +34,7 @@ echo "DATABASE_URL is set: $(if [ -n "$DATABASE_URL" ]; then echo 'yes'; else ec
   if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
     echo "Warning: Database migrations failed after $MAX_RETRIES attempts"
     echo "Trying db push as fallback..."
-    npx prisma db push --accept-data-loss 2>&1 || echo "Warning: db push also failed"
+    $PRISMA_CMD db push --accept-data-loss 2>&1 || echo "Warning: db push also failed"
   fi
 } &
 
