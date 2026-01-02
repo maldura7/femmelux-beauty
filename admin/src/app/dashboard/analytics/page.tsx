@@ -6,6 +6,10 @@ import {
   ChartBarIcon,
   ArrowDownTrayIcon,
   CalendarIcon,
+  CurrencyDollarIcon,
+  ShoppingCartIcon,
+  UsersIcon,
+  ArrowTrendingUpIcon,
 } from '@heroicons/react/24/outline';
 import {
   getDashboardStats,
@@ -165,6 +169,8 @@ export default function AnalyticsPage() {
           value={stats ? formatCurrency(stats.totalRevenue) : '$0'}
           change={stats?.revenueChange}
           changeLabel="vs previous period"
+          icon={<CurrencyDollarIcon className="h-6 w-6 text-primary-600" />}
+          iconBgColor="bg-primary-100"
           isLoading={statsLoading}
         />
         <StatCard
@@ -172,6 +178,8 @@ export default function AnalyticsPage() {
           value={stats?.totalOrders?.toLocaleString() || '0'}
           change={stats?.ordersChange}
           changeLabel="vs previous period"
+          icon={<ShoppingCartIcon className="h-6 w-6 text-blue-600" />}
+          iconBgColor="bg-blue-100"
           isLoading={statsLoading}
         />
         <StatCard
@@ -179,12 +187,16 @@ export default function AnalyticsPage() {
           value={stats?.totalCustomers?.toLocaleString() || '0'}
           change={stats?.customersChange}
           changeLabel="vs previous period"
+          icon={<UsersIcon className="h-6 w-6 text-green-600" />}
+          iconBgColor="bg-green-100"
           isLoading={statsLoading}
         />
         <StatCard
           title="Avg. Order Value"
           value={stats ? formatCurrency(stats.averageOrderValue) : '$0'}
           change={stats?.aovChange}
+          icon={<ArrowTrendingUpIcon className="h-6 w-6 text-indigo-600" />}
+          iconBgColor="bg-indigo-100"
           changeLabel="vs previous period"
           isLoading={statsLoading}
         />

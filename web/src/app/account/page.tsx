@@ -56,7 +56,7 @@ export default function AccountDashboard() {
       {/* Welcome Section */}
       <div className="bg-gradient-to-r from-primary-500 to-primary-400 rounded-2xl p-6 md:p-8 text-secondary-900">
         <h1 className="text-2xl md:text-3xl font-bold mb-2">
-          Welcome back, {user?.name?.split(' ')[0] || 'there'}!
+          Welcome back, {user?.firstName || 'there'}!
         </h1>
         <p className="text-secondary-800/80">
           Manage your orders, track shipments, and update your profile from your account dashboard.
