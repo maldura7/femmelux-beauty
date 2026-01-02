@@ -6,8 +6,10 @@ const nextConfig = {
   // Output standalone build for Docker
   output: 'standalone',
 
-  // Note: No basePath - DigitalOcean strips /admin prefix when routing
-  // Use assetPrefix to serve static files via /admin path which routes back to this service
+  // basePath is required for client-side navigation and RSC payloads
+  // assetPrefix handles static file loading
+  // Both are needed with preserve_path_prefix: true in app.yaml
+  basePath: process.env.NODE_ENV === 'production' ? '/admin' : '',
   assetPrefix: process.env.NODE_ENV === 'production' ? '/admin' : '',
 
   // Configure image domains for Next.js Image component
