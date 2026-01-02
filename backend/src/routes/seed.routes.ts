@@ -6,6 +6,61 @@ const router = Router();
 const prisma = new PrismaClient();
 
 /**
+ * @route   GET /api/seed/db-info
+ * @desc    Get database connection info for debugging
+ * @access  Public (protected by secret key)
+ */
+router.get('/db-info', async (req: Request, res: Response): Promise<void> => {
+  const seedKey = req.headers['x-seed-key'] || req.query.key;
+
+  if (seedKey !== 'femmelux-seed-2024-init') {
+    res.status(403).json({
+      success: false,
+      message: 'Invalid seed key',
+    });
+    return;
+  }
+
+  try {
+    // Get current user and database info
+    const userInfo = await prisma.$queryRaw`SELECT current_user, current_database(), session_user;` as Array<{ current_user: string; current_database: string; session_user: string }>;
+
+    // Check schema permissions
+    const schemaPerms = await prisma.$queryRaw`
+      SELECT has_schema_privilege(current_user, 'public', 'CREATE') as can_create,
+             has_schema_privilege(current_user, 'public', 'USAGE') as can_use;
+    ` as Array<{ can_create: boolean; can_use: boolean }>;
+
+    res.json({
+      success: true,
+      database: {
+        currentUser: userInfo[0]?.current_user,
+        sessionUser: userInfo[0]?.session_user,
+        database: userInfo[0]?.current_database,
+      },
+      permissions: {
+        canCreateInPublic: schemaPerms[0]?.can_create,
+        canUsePublic: schemaPerms[0]?.can_use,
+      },
+      instructions: schemaPerms[0]?.can_create ? null : `
+To fix the permission issue, you need to:
+1. Go to DigitalOcean dashboard > Databases > femmelux-db
+2. Click "Connection details" and copy the doadmin password
+3. Use "psql" or "Connection Pools" to connect as doadmin
+4. Run: GRANT CREATE ON SCHEMA public TO ${userInfo[0]?.current_user};
+5. Then retry the migration
+      `.trim(),
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get database info',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+/**
  * @route   POST /api/seed/migrate
  * @desc    Run database migrations using raw SQL
  * @access  Public (protected by secret key)
@@ -43,6 +98,7 @@ router.post('/migrate', async (req: Request, res: Response): Promise<void> => {
     }
 
     // Run migration SQL in order - ENUMs first, then tables, then indexes
+    // Use DO blocks with exception handling to handle permission issues gracefully
     const migrationStatements = [
       // Create ENUMs
       `DO $$ BEGIN CREATE TYPE "UserRole" AS ENUM ('ADMIN', 'VENDOR', 'CUSTOMER'); EXCEPTION WHEN duplicate_object THEN null; END $$;`,
