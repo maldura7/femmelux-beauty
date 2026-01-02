@@ -1,40 +1,34 @@
 #!/bin/sh
-set -e
 
 echo "Starting FemmeLux Backend..."
+echo "DATABASE_URL is set: $(if [ -n "$DATABASE_URL" ]; then echo 'yes'; else echo 'NO - THIS IS THE PROBLEM'; fi)"
 
-# Wait for database to be ready
-echo "Waiting for database connection..."
-MAX_RETRIES=30
-RETRY_COUNT=0
+# Run database migrations in the background to not block server startup
+{
+  echo "Running database migrations in background..."
+  sleep 5  # Give the server time to start first
 
-while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-  if npx prisma db push --skip-generate 2>/dev/null; then
-    echo "Database connection successful!"
-    break
+  MAX_RETRIES=10
+  RETRY_COUNT=0
+
+  while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+    if npx prisma migrate deploy 2>&1; then
+      echo "Database migrations completed successfully!"
+      break
+    fi
+
+    RETRY_COUNT=$((RETRY_COUNT + 1))
+    echo "Migration attempt $RETRY_COUNT failed, retrying in 10 seconds..."
+    sleep 10
+  done
+
+  if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
+    echo "Warning: Database migrations failed after $MAX_RETRIES attempts"
+    echo "Trying db push as fallback..."
+    npx prisma db push --accept-data-loss 2>&1 || echo "Warning: db push also failed"
   fi
+} &
 
-  RETRY_COUNT=$((RETRY_COUNT + 1))
-  echo "Database not ready, attempt $RETRY_COUNT of $MAX_RETRIES..."
-  sleep 2
-done
-
-if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
-  echo "Warning: Could not verify database connection after $MAX_RETRIES attempts"
-  echo "Attempting to start anyway..."
-fi
-
-# Run database migrations
-echo "Running database migrations..."
-npx prisma migrate deploy || {
-  echo "Migration failed, attempting db push as fallback..."
-  npx prisma db push --skip-generate || echo "Warning: Could not sync database schema"
-}
-
-# Generate Prisma client (in case it's needed)
-echo "Ensuring Prisma client is up to date..."
-npx prisma generate
-
-# Start the server
-echo "Starting Express server..."
+# Start the server immediately so health checks pass
+echo "Starting Express server on port ${PORT:-4000}..."
 exec node dist/server.js

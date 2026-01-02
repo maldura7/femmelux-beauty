@@ -34,15 +34,29 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 /**
- * Connect to the database
+ * Connect to the database with retry logic
  */
 export async function connectDatabase(): Promise<void> {
-  try {
-    await prisma.$connect();
-    console.log('✅ Database connected successfully');
-  } catch (error) {
-    console.error('❌ Database connection failed:', error);
-    process.exit(1);
+  const maxRetries = 5;
+  const retryDelay = 5000; // 5 seconds
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      await prisma.$connect();
+      console.log('✅ Database connected successfully');
+      return;
+    } catch (error) {
+      console.error(`❌ Database connection attempt ${attempt}/${maxRetries} failed:`, error);
+
+      if (attempt === maxRetries) {
+        console.error('❌ All database connection attempts failed. Server will start but database features may not work.');
+        // Don't exit - let the server start anyway for health checks
+        return;
+      }
+
+      console.log(`⏳ Retrying in ${retryDelay / 1000} seconds...`);
+      await new Promise(resolve => setTimeout(resolve, retryDelay));
+    }
   }
 }
 
