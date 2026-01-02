@@ -1,0 +1,120 @@
+name: femmelux-beauty
+region: nyc
+features:
+  - buildpack-stack=ubuntu-22
+
+# ============================================
+# DATABASES
+# ============================================
+databases:
+  - name: femmelux-db
+    engine: PG
+    version: "15"
+    size: db-s-1vcpu-1gb
+    num_nodes: 1
+
+# ============================================
+# SERVICES
+# ============================================
+services:
+  # Backend API
+  - name: backend
+    github:
+      repo: YOUR_GITHUB_USERNAME/femmelux-beauty
+      branch: main
+      deploy_on_push: true
+    source_dir: /backend
+    dockerfile_path: backend/Dockerfile
+    http_port: 4000
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    routes:
+      - path: /api
+    envs:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "4000"
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        value: ${femmelux-db.DATABASE_URL}
+      - key: JWT_ACCESS_SECRET
+        scope: RUN_TIME
+        type: SECRET
+      - key: JWT_REFRESH_SECRET
+        scope: RUN_TIME
+        type: SECRET
+      - key: JWT_ACCESS_EXPIRES_IN
+        value: "15m"
+      - key: JWT_REFRESH_EXPIRES_IN
+        value: "7d"
+      - key: CORS_ORIGINS
+        scope: RUN_TIME
+        value: ${web.PUBLIC_URL},${admin.PUBLIC_URL}
+      - key: REDIS_URL
+        scope: RUN_TIME
+        type: SECRET
+      - key: SMTP_HOST
+        scope: RUN_TIME
+        type: SECRET
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        scope: RUN_TIME
+        type: SECRET
+      - key: SMTP_PASS
+        scope: RUN_TIME
+        type: SECRET
+      - key: SMTP_FROM
+        scope: RUN_TIME
+        type: SECRET
+
+  # Admin Panel (Next.js)
+  - name: admin
+    github:
+      repo: YOUR_GITHUB_USERNAME/femmelux-beauty
+      branch: main
+      deploy_on_push: true
+    source_dir: /admin
+    dockerfile_path: admin/Dockerfile
+    http_port: 3000
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    routes:
+      - path: /admin
+    envs:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_API_URL
+        scope: RUN_TIME
+        value: ${backend.PUBLIC_URL}/api
+      - key: NEXT_PUBLIC_SITE_URL
+        scope: RUN_TIME
+        value: ${admin.PUBLIC_URL}
+      - key: NEXT_PUBLIC_SITE_NAME
+        value: "FemmeLux Admin"
+
+  # Web Storefront (Next.js)
+  - name: web
+    github:
+      repo: YOUR_GITHUB_USERNAME/femmelux-beauty
+      branch: main
+      deploy_on_push: true
+    source_dir: /web
+    dockerfile_path: web/Dockerfile
+    http_port: 3000
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    routes:
+      - path: /
+    envs:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_API_URL
+        scope: RUN_TIME
+        value: ${backend.PUBLIC_URL}/api
+      - key: NEXT_PUBLIC_SITE_URL
+        scope: RUN_TIME
+        value: ${web.PUBLIC_URL}
+      - key: NEXT_PUBLIC_SITE_NAME
+        value: "FemmeLux Beauty"

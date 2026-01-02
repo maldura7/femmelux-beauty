@@ -1,0 +1,388 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum UserRole {
+  ADMIN
+  VENDOR
+  CUSTOMER
+}
+
+enum AccountStatus {
+  GUEST      // Just registered, no application submitted
+  PENDING    // Application submitted, awaiting approval
+  APPROVED   // Approved by admin, can see prices and order
+  REJECTED   // Application rejected
+  SUSPENDED  // Account suspended by admin
+}
+
+enum ApplicationType {
+  CUSTOMER
+  VENDOR
+}
+
+enum ApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+}
+
+enum MessageStatus {
+  UNREAD
+  READ
+  REPLIED
+  ARCHIVED
+}
+
+enum MessagePriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+// ============================================
+// MODELS
+// ============================================
+
+model User {
+  id           String        @id @default(uuid())
+  email        String        @unique
+  password     String
+  firstName    String
+  lastName     String
+  role         UserRole      @default(CUSTOMER)
+  brandId      String?
+
+  // Account Status
+  accountStatus    AccountStatus @default(GUEST)
+  appliedAt        DateTime?
+  approvedAt       DateTime?
+  approvedBy       String?
+  rejectedAt       DateTime?
+  rejectedBy       String?
+  rejectionReason  String?       @db.Text
+  suspendedAt      DateTime?
+  suspensionReason String?       @db.Text
+
+  // Business Information
+  businessName            String?
+  businessType            String?   // LLC, Corporation, Sole Proprietor, etc.
+  taxId                   String?
+  phone                   String?
+  businessAddress         Json?     // Full address object
+  businessWebsite         String?
+  businessYears           Int?      // Years in business
+  businessLicense         String?   // License number
+  resaleCertificate       String?   // Resale certificate number or file URL
+  estimatedMonthlyPurchase Decimal? @db.Decimal(10, 2)
+  howDidYouHear           String?
+  references              String?   @db.Text // Business references
+  additionalNotes         String?   @db.Text
+
+  status    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  brand                Brand?                @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  orders               Order[]
+  searchLogs           SearchLog[]
+  applications         BusinessApplication[] @relation("UserApplications")
+  reviewedApplications BusinessApplication[] @relation("ApplicationReviewer")
+  approvedUsers        User[]                @relation("UserApprover")
+  approver             User?                 @relation("UserApprover", fields: [approvedBy], references: [id], onDelete: SetNull)
+  rejectedUsers        User[]                @relation("UserRejecter")
+  rejecter             User?                 @relation("UserRejecter", fields: [rejectedBy], references: [id], onDelete: SetNull)
+  passwordResetTokens  PasswordResetToken[]
+
+  @@index([email])
+  @@index([role])
+  @@index([brandId])
+  @@index([accountStatus])
+  @@map("users")
+}
+
+model BusinessApplication {
+  id              String          @id @default(uuid())
+  userId          String
+  applicationType ApplicationType
+
+  // Business Information
+  businessName            String
+  businessType            String
+  taxId                   String
+  phone                   String
+  businessAddress         Json
+  businessWebsite         String?
+  businessYears           Int?
+  businessLicense         String?
+  resaleCertificate       String?
+  estimatedMonthlyPurchase Decimal? @db.Decimal(10, 2)
+  howDidYouHear           String?
+  references              String?  @db.Text
+  additionalNotes         String?  @db.Text
+
+  // For vendor applications
+  brandName          String?
+  brandDescription   String?   @db.Text
+  productCategories  String[]
+  vendorMinimumOrder Decimal?  @db.Decimal(10, 2)
+  productLineSize    Int?
+
+  // Application Status
+  status          ApplicationStatus @default(PENDING)
+  submittedAt     DateTime          @default(now())
+  reviewedAt      DateTime?
+  reviewedBy      String?
+  reviewNotes     String?           @db.Text
+  rejectionReason String?           @db.Text
+
+  // Documents (file uploads - array of document URLs/info)
+  documents Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user     User  @relation("UserApplications", fields: [userId], references: [id], onDelete: Cascade)
+  reviewer User? @relation("ApplicationReviewer", fields: [reviewedBy], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([status])
+  @@index([applicationType])
+  @@index([submittedAt])
+  @@map("business_applications")
+}
+
+model Brand {
+  id           String   @id @default(uuid())
+  name         String
+  slug         String   @unique
+  logo         String?
+  description  String?
+  minimumOrder Decimal  @default(0) @db.Decimal(10, 2)
+  status       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  products Product[]
+  vendors  User[]
+
+  @@index([slug])
+  @@index([status])
+  @@map("brands")
+}
+
+model Product {
+  id             String   @id @default(uuid())
+  brandId        String
+  name           String
+  slug           String   @unique
+  description    String   @db.Text
+  costPrice      Decimal  @default(0) @db.Decimal(10, 2) // Cost to you (admin only)
+  wholesalePrice Decimal  @db.Decimal(10, 2) // Price for wholesale customers
+  price          Decimal  @db.Decimal(10, 2) // Retail price (kept for backwards compatibility)
+  sku            String   @unique
+  images         String[]
+  quantity       Int      @default(0)
+  lowStockThreshold Int   @default(10) // Alert when stock falls below this
+  status         Boolean  @default(true)
+  category       String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Search-related fields
+  searchVector String? @db.Text // Combined searchable text
+  popularity   Int     @default(0) // Search ranking factor
+  viewCount    Int     @default(0) // Track product views
+
+  // Relations
+  brand        Brand       @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  orderItems   OrderItem[]
+  searchClicks SearchLog[] @relation("ClickedProduct")
+
+  @@index([brandId])
+  @@index([slug])
+  @@index([sku])
+  @@index([category])
+  @@index([status])
+  @@index([popularity])
+  @@index([name, description, sku])
+  @@map("products")
+}
+
+model Order {
+  id              String        @id @default(uuid())
+  orderNumber     String        @unique
+  customerId      String
+  subtotal        Decimal       @db.Decimal(10, 2)
+  tax             Decimal       @db.Decimal(10, 2)
+  shipping        Decimal       @db.Decimal(10, 2)
+  total           Decimal       @db.Decimal(10, 2)
+  status          OrderStatus   @default(PENDING)
+  paymentStatus   PaymentStatus @default(PENDING)
+  shippingAddress Json
+  billingAddress  Json
+  notes           String?       @db.Text
+  trackingNumber  String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relations
+  customer User        @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  items    OrderItem[]
+
+  @@index([orderNumber])
+  @@index([customerId])
+  @@index([status])
+  @@index([paymentStatus])
+  @@index([createdAt])
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String  @id @default(uuid())
+  orderId   String
+  productId String
+  quantity  Int
+  price     Decimal @db.Decimal(10, 2)
+  subtotal  Decimal @db.Decimal(10, 2)
+
+  // Relations
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("order_items")
+}
+
+model SearchLog {
+  id               String   @id @default(uuid())
+  query            String
+  userId           String?
+  resultsCount     Int      @default(0)
+  clickedProductId String?
+  ipAddress        String?
+  userAgent        String?
+  createdAt        DateTime @default(now())
+
+  // Relations
+  user           User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  clickedProduct Product? @relation("ClickedProduct", fields: [clickedProductId], references: [id], onDelete: SetNull)
+
+  @@index([query])
+  @@index([userId])
+  @@index([createdAt])
+  @@index([clickedProductId])
+  @@map("search_logs")
+}
+
+model Category {
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique
+  description String?  @db.Text
+  image       String?
+  parentId    String?
+  status      Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  parent   Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children Category[] @relation("CategoryHierarchy")
+
+  @@index([slug])
+  @@index([parentId])
+  @@index([status])
+  @@map("categories")
+}
+
+model ContactMessage {
+  id          String          @id @default(uuid())
+  name        String
+  email       String
+  phone       String?
+  subject     String
+  orderNumber String?
+  message     String          @db.Text
+  status      MessageStatus   @default(UNREAD)
+  priority    MessagePriority @default(NORMAL)
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  // Relations
+  replies MessageReply[]
+
+  @@index([email])
+  @@index([status])
+  @@index([subject])
+  @@index([createdAt])
+  @@map("contact_messages")
+}
+
+model MessageReply {
+  id        String   @id @default(uuid())
+  messageId String
+  content   String   @db.Text
+  sentBy    String   // Admin user ID
+  sentByName String  // Admin name for display
+  sentAt    DateTime @default(now())
+
+  // Relations
+  message ContactMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([messageId])
+  @@index([sentAt])
+  @@map("message_replies")
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
+}

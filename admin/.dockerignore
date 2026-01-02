@@ -1,0 +1,14 @@
+node_modules
+npm-debug.log
+.env
+.env.local
+.env.*.local
+.next
+out
+*.log
+.git
+.gitignore
+README.md
+.vscode
+coverage
+.nyc_output

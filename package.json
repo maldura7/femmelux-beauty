@@ -1,0 +1,38 @@
+{
+  "name": "femmelux-beauty",
+  "version": "1.0.0",
+  "description": "FemmeLux Beauty Platform - A comprehensive beauty e-commerce solution",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "admin",
+    "web",
+    "shared"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:admin\" \"npm run dev:web\"",
+    "dev:backend": "npm run dev --workspace=backend",
+    "dev:admin": "npm run dev --workspace=admin",
+    "dev:web": "npm run dev --workspace=web",
+    "build": "npm run build --workspaces",
+    "build:backend": "npm run build --workspace=backend",
+    "build:admin": "npm run build --workspace=admin",
+    "build:web": "npm run build --workspace=web",
+    "build:shared": "npm run build --workspace=shared",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "clean": "rimraf node_modules backend/node_modules admin/node_modules web/node_modules shared/node_modules"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "rimraf": "^5.0.5",
+    "typescript": "^5.3.3"
+  },
+  "overrides": {
+    "@types/react": "^18.2.47",
+    "@types/react-dom": "^18.2.18"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
