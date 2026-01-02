@@ -44,7 +44,7 @@ export default function CheckoutPage() {
   // Redirect to cart if empty or minimum not met
   useEffect(() => {
     if (isEmpty && currentStep !== 'confirmation') {
-      router.push('/cart');
+      router.push('/cart' as '/');
     }
   }, [isEmpty, currentStep, router]);
 
@@ -74,7 +74,7 @@ export default function CheckoutPage() {
 
     if (items.length === 0) {
       toast.error('Your cart is empty');
-      router.push('/cart');
+      router.push('/cart' as '/');
       return;
     }
 

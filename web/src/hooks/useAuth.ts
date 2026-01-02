@@ -43,7 +43,7 @@ export function useAuth(): UseAuthReturn {
     async (credentials: LoginCredentials) => {
       const response = await loginApi(credentials);
       setUser(response.user as User);
-      router.push('/');
+      router.push('/' as '/');
     },
     [router, setUser]
   );
@@ -55,14 +55,14 @@ export function useAuth(): UseAuthReturn {
       // Ignore logout API errors
     }
     storeLogout();
-    router.push('/login');
+    router.push('/login' as '/');
   }, [router, storeLogout]);
 
   const register = useCallback(
     async (data: RegisterData) => {
       const response = await registerApi(data);
       setUser(response.user as User);
-      router.push('/');
+      router.push('/' as '/');
     },
     [router, setUser]
   );

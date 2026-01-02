@@ -32,7 +32,7 @@ This guide walks you through deploying FemmeLux Beauty to DigitalOcean App Platf
    ```
 
 2. Update `.do/app.yaml`:
-   - Replace `YOUR_GITHUB_USERNAME` with your actual GitHub username
+   - Replace `maldura7` with your actual GitHub username
 
 ## Step 2: Create the App on DigitalOcean
 

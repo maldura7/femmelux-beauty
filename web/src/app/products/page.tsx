@@ -86,7 +86,7 @@ export default function ProductsPage() {
       params.set('page', '1');
     }
 
-    router.push(`/products?${params.toString()}`);
+    router.push(`/products?${params.toString()}` as '/');
   }, [router, searchParams]);
 
   // Fetch brands on mount
@@ -182,7 +182,7 @@ export default function ProductsPage() {
   };
 
   const handleClearAll = () => {
-    router.push('/products');
+    router.push('/products' as '/');
   };
 
   const handlePageChange = (newPage: number) => {

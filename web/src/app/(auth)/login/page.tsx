@@ -33,7 +33,7 @@ export default function LoginPage() {
       // Update the auth store with the logged-in user
       setUser(result.user);
       toast.success('Welcome back!');
-      router.push('/account');
+      router.push('/account' as '/');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Login failed');
     } finally {

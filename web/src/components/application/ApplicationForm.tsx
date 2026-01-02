@@ -232,7 +232,7 @@ export default function ApplicationForm({ isResubmit = false }: ApplicationFormP
       toast.success('Application submitted successfully!');
 
       // Redirect to success page
-      router.push('/account/apply/success');
+      router.push('/account/apply/success' as '/');
     } catch (error) {
       console.error('Failed to submit application:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to submit application');

@@ -87,7 +87,7 @@ export function ReorderButton({
       }
 
       toast.success(`Added ${addedCount} items to cart`);
-      router.push('/cart');
+      router.push('/cart' as '/');
     } catch (error) {
       toast.error('Failed to add items to cart');
     } finally {

@@ -40,7 +40,7 @@ export default function CartPage() {
 
   const handleCheckout = () => {
     if (allBrandsMeetMinimum) {
-      router.push('/checkout');
+      router.push('/checkout' as '/');
     }
   };
 

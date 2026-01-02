@@ -46,14 +46,14 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
   useEffect(() => {
     // Redirect to login if not authenticated after loading completes
     if (!isLoading && !isAuthenticated) {
-      router.push('/login?redirect=/account');
+      router.push('/login?redirect=/account' as '/');
     }
   }, [isLoading, isAuthenticated, router]);
 
   const handleLogout = () => {
     storeLogout();
     toast.success('Logged out successfully');
-    router.push('/');
+    router.push('/' as '/');
   };
 
   const isActive = (href: string) => {

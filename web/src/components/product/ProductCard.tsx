@@ -169,7 +169,7 @@ export function ProductCard({ product, user, onAddToCart, showBrand = true }: Pr
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                router.push(!user ? '/login' : '/account/apply');
+                router.push((!user ? '/login' : '/account/apply') as '/');
               }}
               className="w-full py-3 rounded-lg font-medium text-sm transition-colors flex items-center justify-center gap-2 bg-primary-500 text-secondary-900 hover:bg-primary-600"
             >

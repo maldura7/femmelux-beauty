@@ -44,7 +44,15 @@
       "Bash(node cleanup-claraline.js:*)",
       "Bash(more:*)",
       "Bash(git init:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nInitial commit - FemmeLux Beauty wholesale platform\n\nFeatures:\n- Backend API with Express, Prisma, PostgreSQL\n- Admin panel with Next.js\n- Web storefront with Next.js\n- Docker deployment configuration for DigitalOcean\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(doctl apps get:*)",
+      "Bash(doctl apps list:*)",
+      "Bash(cmd /c \"doctl apps list\")",
+      "Bash(powershell -Command \"doctl apps list\")",
+      "Bash(powershell -Command:*)"
     ]
   }
 }
