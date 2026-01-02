@@ -29,7 +29,7 @@ export function OrderCard({ order }: OrderCardProps) {
 
   return (
     <Link
-      href={`/account/orders/${order.id}`}
+      href={`/account/orders/${order.id}` as '/'}
       className="block bg-white border border-gray-200 rounded-xl p-4 hover:border-primary-300 hover:shadow-md transition-all group"
     >
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

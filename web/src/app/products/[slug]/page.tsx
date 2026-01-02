@@ -132,7 +132,7 @@ export default function ProductPage() {
               <>
                 <span className="text-gray-400">/</span>
                 <Link
-                  href={`/brands/${product.brand.slug}`}
+                  href={`/brands/${product.brand.slug}` as '/'}
                   className="text-gray-500 hover:text-primary-600"
                 >
                   {product.brand.name}
@@ -177,7 +177,7 @@ export default function ProductPage() {
             <div>
               {/* Brand Link */}
               <Link
-                href={`/brands/${product.brand.slug}`}
+                href={`/brands/${product.brand.slug}` as '/'}
                 className="inline-flex items-center gap-2 text-sm font-medium text-primary-600 hover:text-primary-700 uppercase tracking-wide mb-2"
               >
                 {product.brand.name}
@@ -413,7 +413,7 @@ export default function ProductPage() {
                     <div className="text-center py-4">
                       <p className="text-gray-600 mb-4">This product is currently out of stock.</p>
                       <Link
-                        href={`/brands/${product.brand.slug}`}
+                        href={`/brands/${product.brand.slug}` as '/'}
                         className="text-primary-600 hover:text-primary-700 font-medium"
                       >
                         Browse more from {product.brand.name}
@@ -524,7 +524,7 @@ export default function ProductPage() {
             {/* View All Brand Products */}
             <div className="text-center mt-8">
               <Link
-                href={`/brands/${product.brand.slug}`}
+                href={`/brands/${product.brand.slug}` as '/'}
                 className="inline-flex items-center gap-2 px-6 py-3 bg-secondary-800 hover:bg-secondary-900 text-white font-semibold rounded-lg transition-colors"
               >
                 View All {product.brand.name} Products

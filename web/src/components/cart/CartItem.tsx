@@ -23,7 +23,7 @@ export function CartItem({ item, onUpdateQuantity, onRemove }: CartItemProps) {
         <div className="flex items-center gap-4">
           {/* Image */}
           <Link
-            href={`/products/${item.product.slug}`}
+            href={`/products/${item.product.slug}` as '/'}
             className="relative w-20 h-20 bg-gray-50 rounded-lg overflow-hidden flex-shrink-0"
           >
             <FallbackImage
@@ -39,7 +39,7 @@ export function CartItem({ item, onUpdateQuantity, onRemove }: CartItemProps) {
           {/* Details */}
           <div className="min-w-0">
             <Link
-              href={`/products/${item.product.slug}`}
+              href={`/products/${item.product.slug}` as '/'}
               className="font-medium text-secondary-800 hover:text-primary-600 transition-colors line-clamp-2"
             >
               {item.product.name}
@@ -104,7 +104,7 @@ export function CartItemCard({ item, onUpdateQuantity, onRemove }: CartItemProps
     <div className="flex gap-4 py-4 border-b border-gray-100 last:border-0">
       {/* Image */}
       <Link
-        href={`/products/${item.product.slug}`}
+        href={`/products/${item.product.slug}` as '/'}
         className="relative w-24 h-24 bg-gray-50 rounded-lg overflow-hidden flex-shrink-0"
       >
         <FallbackImage
@@ -122,7 +122,7 @@ export function CartItemCard({ item, onUpdateQuantity, onRemove }: CartItemProps
         <div className="flex justify-between items-start gap-2">
           <div>
             <Link
-              href={`/products/${item.product.slug}`}
+              href={`/products/${item.product.slug}` as '/'}
               className="font-medium text-secondary-800 hover:text-primary-600 transition-colors line-clamp-2"
             >
               {item.product.name}

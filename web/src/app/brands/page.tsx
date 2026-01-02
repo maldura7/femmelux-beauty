@@ -104,7 +104,7 @@ export default function BrandsPage() {
             {filteredBrands.map((brand) => (
               <Link
                 key={brand.id}
-                href={`/brands/${brand.slug}` as any}
+                href={`/brands/${brand.slug}` as '/'}
                 className="group bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden border border-gray-100"
               >
                 {/* Brand Logo */}

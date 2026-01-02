@@ -30,7 +30,7 @@ export function SearchResultCard({
       <div className="flex gap-4 p-4 bg-white rounded-lg border border-gray-200 hover:shadow-md transition-shadow">
         {/* Image */}
         <Link
-          href={`/products/${product.slug}`}
+          href={`/products/${product.slug}` as '/'}
           className="relative w-32 h-32 flex-shrink-0 rounded-md overflow-hidden bg-gray-100"
         >
           {primaryImage ? (
@@ -62,12 +62,12 @@ export function SearchResultCard({
         {/* Content */}
         <div className="flex-1 min-w-0 flex flex-col">
           <div className="flex-1">
-            <Link href={`/brands/${product.brand.slug}`}>
+            <Link href={`/brands/${product.brand.slug}` as '/'}>
               <span className="text-xs text-pink-600 hover:text-pink-700 font-medium uppercase tracking-wide">
                 {product.brand.name}
               </span>
             </Link>
-            <Link href={`/products/${product.slug}`}>
+            <Link href={`/products/${product.slug}` as '/'}>
               <h3 className="mt-1 text-lg font-medium text-gray-900 hover:text-pink-600 transition-colors line-clamp-2">
                 <HighlightedText text={product.name} highlight={searchQuery} />
               </h3>
@@ -124,7 +124,7 @@ export function SearchResultCard({
     <div className="group bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow">
       {/* Image */}
       <Link
-        href={`/products/${product.slug}`}
+        href={`/products/${product.slug}` as '/'}
         className="relative aspect-square block overflow-hidden bg-gray-100"
       >
         {primaryImage ? (
@@ -181,13 +181,13 @@ export function SearchResultCard({
 
       {/* Content */}
       <div className="p-4">
-        <Link href={`/brands/${product.brand.slug}`}>
+        <Link href={`/brands/${product.brand.slug}` as '/'}>
           <span className="text-xs text-pink-600 hover:text-pink-700 font-medium uppercase tracking-wide">
             {product.brand.name}
           </span>
         </Link>
 
-        <Link href={`/products/${product.slug}`}>
+        <Link href={`/products/${product.slug}` as '/'}>
           <h3 className="mt-1.5 text-sm font-medium text-gray-900 hover:text-pink-600 transition-colors line-clamp-2 min-h-[2.5rem]">
             <HighlightedText text={product.name} highlight={searchQuery} />
           </h3>

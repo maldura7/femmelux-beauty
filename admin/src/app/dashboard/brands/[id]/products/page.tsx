@@ -227,7 +227,7 @@ export default function BrandProductsPage() {
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-medium text-secondary-800">
-                      {product.stockQuantity || 0}
+                      {product.quantity || 0}
                     </p>
                     <p className="text-xs text-gray-500">in stock</p>
                   </div>

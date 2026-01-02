@@ -135,7 +135,7 @@ export function Header() {
                         <MenuItem key={brand.id}>
                           {({ focus }) => (
                             <Link
-                              href={`/brands/${brand.slug}`}
+                              href={`/brands/${brand.slug}` as '/'}
                               className={cn(
                                 'block px-4 py-2 text-sm',
                                 focus ? 'bg-gray-50 text-primary-600' : 'text-gray-700'

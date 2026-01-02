@@ -267,7 +267,7 @@ export default function OrderDetailsPage() {
 
                         <div className="flex-1 min-w-0">
                           <Link
-                            href={`/products/${item.productId}`}
+                            href={`/products/${item.productId}` as '/'}
                             className="font-medium text-secondary-800 hover:text-primary-600 transition-colors line-clamp-1"
                           >
                             {item.productName}

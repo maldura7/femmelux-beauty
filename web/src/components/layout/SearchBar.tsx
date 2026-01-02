@@ -318,7 +318,7 @@ export function SearchBar({ className = '', onClose, isMobile = false }: SearchB
                   return (
                     <Link
                       key={product.id}
-                      href={`/products/${product.slug}`}
+                      href={`/products/${product.slug}` as '/'}
                       onClick={() => {
                         setIsOpen(false);
                         setQuery('');
@@ -370,7 +370,7 @@ export function SearchBar({ className = '', onClose, isMobile = false }: SearchB
                 {suggestions.brands.map((brand) => (
                   <Link
                     key={brand.id}
-                    href={`/brands/${brand.slug}`}
+                    href={`/brands/${brand.slug}` as '/'}
                     onClick={() => {
                       setIsOpen(false);
                       setQuery('');

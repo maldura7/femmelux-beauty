@@ -14,7 +14,7 @@ export function BrandCard({ brand }: BrandCardProps) {
 
   return (
     <Link
-      href={`/brands/${brand.slug}`}
+      href={`/brands/${brand.slug}` as '/'}
       className="group block bg-white rounded-xl border border-gray-100 overflow-hidden transition-all duration-300 hover:shadow-xl hover:shadow-gray-200/50 hover:-translate-y-1"
     >
       {/* Logo Container */}

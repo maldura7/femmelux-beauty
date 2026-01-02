@@ -172,7 +172,7 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
                             {brands.slice(0, 6).map((brand: Brand) => (
                               <Link
                                 key={brand.id}
-                                href={`/brands/${brand.slug}`}
+                                href={`/brands/${brand.slug}` as '/'}
                                 onClick={onClose}
                                 className="block px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 hover:text-primary-600 rounded-lg transition-colors"
                               >

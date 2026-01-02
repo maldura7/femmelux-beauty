@@ -81,7 +81,7 @@ export function ProductCard({ product, user, onAddToCart, showBrand = true }: Pr
     <div className="group bg-white rounded-xl border border-gray-100 overflow-hidden transition-all duration-300 hover:shadow-xl hover:shadow-gray-200/50 hover:-translate-y-1">
       {/* Image Container */}
       <Link
-        href={`/products/${product.slug}`}
+        href={`/products/${product.slug}` as '/'}
         className="block relative aspect-square overflow-hidden bg-gray-50"
       >
         <FallbackImage
@@ -185,7 +185,7 @@ export function ProductCard({ product, user, onAddToCart, showBrand = true }: Pr
         {/* Brand */}
         {showBrand && (
           <Link
-            href={`/brands/${product.brand.slug}`}
+            href={`/brands/${product.brand.slug}` as '/'}
             className="text-xs font-medium text-primary-600 hover:text-primary-700 uppercase tracking-wide"
           >
             {product.brand.name}
@@ -193,7 +193,7 @@ export function ProductCard({ product, user, onAddToCart, showBrand = true }: Pr
         )}
 
         {/* Product Name */}
-        <Link href={`/products/${product.slug}`}>
+        <Link href={`/products/${product.slug}` as '/'}>
           <h3 className="mt-1 font-medium text-secondary-800 hover:text-primary-600 transition-colors line-clamp-2 min-h-[2.5rem]">
             {product.name}
           </h3>

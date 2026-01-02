@@ -88,7 +88,7 @@ export function BrandBar() {
               {brands.map((brand: Brand) => (
                 <Link
                   key={brand.id}
-                  href={`/brands/${brand.slug}`}
+                  href={`/brands/${brand.slug}` as '/'}
                   className="flex items-center gap-2 px-3 py-1.5 bg-white rounded-full border border-gray-200 hover:border-primary-500 hover:shadow-sm transition-all whitespace-nowrap group flex-shrink-0"
                 >
                   <div className="relative w-6 h-6 rounded-full overflow-hidden">

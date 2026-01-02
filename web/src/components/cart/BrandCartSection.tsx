@@ -26,7 +26,7 @@ export function BrandCartSection({
       <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
         <div className="flex items-center justify-between">
           <Link
-            href={`/brands/${brand.slug}`}
+            href={`/brands/${brand.slug}` as '/'}
             className="flex items-center gap-3 hover:opacity-80 transition-opacity"
           >
             <div className="relative w-10 h-10 bg-white rounded-lg border border-gray-200 overflow-hidden">
@@ -127,7 +127,7 @@ export function BrandCartSection({
                   Add {formatCurrency(amountToMinimum)} more to checkout.
                 </p>
                 <Link
-                  href={`/brands/${brand.slug}`}
+                  href={`/brands/${brand.slug}` as '/'}
                   className="inline-block mt-2 text-xs font-medium text-amber-700 hover:text-amber-800 underline"
                 >
                   Browse more from {brand.name} →
