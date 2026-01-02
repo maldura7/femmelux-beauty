@@ -147,7 +147,7 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
                 return (
                   <Link
                     key={item.href}
-                    href={item.href}
+                    href={item.href as '/'}
                     onClick={() => setSidebarOpen(false)}
                     className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
                       active
