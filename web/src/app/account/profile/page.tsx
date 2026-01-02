@@ -13,7 +13,8 @@ import { getStoredUser, updateProfile, changePassword, type User } from '@/lib/a
 import toast from 'react-hot-toast';
 
 interface ProfileFormData {
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   phone?: string;
   businessName?: string;
@@ -43,7 +44,8 @@ export default function ProfilePage() {
     reset: resetProfile,
   } = useForm<ProfileFormData>({
     defaultValues: {
-      name: '',
+      firstName: '',
+      lastName: '',
       email: '',
       phone: '',
       businessName: '',
@@ -66,18 +68,19 @@ export default function ProfilePage() {
   useEffect(() => {
     if (user) {
       resetProfile({
-        name: user.name || '',
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
         email: user.email || '',
-        phone: '',
-        businessName: user.customer?.businessName || '',
-        taxId: user.customer?.taxId || '',
+        phone: user.phone || '',
+        businessName: user.businessName || '',
+        taxId: user.taxId || '',
       });
     }
   }, [user, resetProfile]);
 
   // Update profile mutation
   const profileMutation = useMutation({
-    mutationFn: (data: ProfileFormData) => updateProfile({ name: data.name }),
+    mutationFn: (data: ProfileFormData) => updateProfile({ firstName: data.firstName, lastName: data.lastName }),
     onSuccess: (updatedUser) => {
       setUser(updatedUser);
       toast.success('Profile updated successfully');
@@ -164,21 +167,39 @@ export default function ProfilePage() {
         <div className="bg-white border border-gray-200 rounded-xl p-6">
           <form onSubmit={handleProfileSubmit(onProfileSubmit)} className="space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {/* Name */}
-              <div className="sm:col-span-2">
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-                  Full Name <span className="text-red-500">*</span>
+              {/* First Name */}
+              <div>
+                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">
+                  First Name <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
-                  id="name"
-                  {...registerProfile('name', { required: 'Name is required' })}
+                  id="firstName"
+                  {...registerProfile('firstName', { required: 'First name is required' })}
                   className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
-                    profileErrors.name ? 'border-red-500' : 'border-gray-200'
+                    profileErrors.firstName ? 'border-red-500' : 'border-gray-200'
                   }`}
                 />
-                {profileErrors.name && (
-                  <p className="mt-1 text-sm text-red-500">{profileErrors.name.message}</p>
+                {profileErrors.firstName && (
+                  <p className="mt-1 text-sm text-red-500">{profileErrors.firstName.message}</p>
+                )}
+              </div>
+
+              {/* Last Name */}
+              <div>
+                <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">
+                  Last Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="lastName"
+                  {...registerProfile('lastName', { required: 'Last name is required' })}
+                  className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                    profileErrors.lastName ? 'border-red-500' : 'border-gray-200'
+                  }`}
+                />
+                {profileErrors.lastName && (
+                  <p className="mt-1 text-sm text-red-500">{profileErrors.lastName.message}</p>
                 )}
               </div>
 
@@ -214,7 +235,7 @@ export default function ProfilePage() {
               </div>
 
               {/* Business Name */}
-              {user.customer && (
+              {user?.businessName && (
                 <>
                   <div>
                     <label
@@ -253,15 +274,15 @@ export default function ProfilePage() {
             </div>
 
             {/* Account Status */}
-            {user.customer && (
+            {user?.accountStatus && user.accountStatus !== 'GUEST' && (
               <div className="pt-4 border-t border-gray-200">
                 <h3 className="text-sm font-medium text-gray-700 mb-3">Account Status</h3>
                 <div
                   className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg ${
-                    user.customer.isApproved ? 'bg-green-50' : 'bg-amber-50'
+                    user.accountStatus === 'APPROVED' ? 'bg-green-50' : 'bg-amber-50'
                   }`}
                 >
-                  {user.customer.isApproved ? (
+                  {user.accountStatus === 'APPROVED' ? (
                     <>
                       <CheckCircleIcon className="w-5 h-5 text-green-600" />
                       <span className="font-medium text-green-700">Verified Wholesale Account</span>

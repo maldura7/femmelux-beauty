@@ -96,11 +96,11 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
                     {/* User Section */}
                     {isAuthenticated && user ? (
                       <div className="px-4 py-4 border-b border-gray-200 bg-gray-50">
-                        <p className="text-sm font-medium text-gray-900">{user.name}</p>
+                        <p className="text-sm font-medium text-gray-900">{user.firstName} {user.lastName}</p>
                         <p className="text-xs text-gray-500">{user.email}</p>
-                        {user.customer?.businessName && (
+                        {user.businessName && (
                           <p className="text-xs text-primary-600 mt-1">
-                            {user.customer.businessName}
+                            {user.businessName}
                           </p>
                         )}
                       </div>

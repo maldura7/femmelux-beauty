@@ -222,7 +222,7 @@ export default function BrandProductsPage() {
                       ${Number(product.wholesalePrice || 0).toFixed(2)}
                     </p>
                     <p className="text-xs text-gray-500">
-                      Retail: ${Number(product.retailPrice || 0).toFixed(2)}
+                      Retail: ${Number(product.price || 0).toFixed(2)}
                     </p>
                   </div>
                   <div className="text-right">

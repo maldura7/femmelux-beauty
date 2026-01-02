@@ -52,7 +52,10 @@
       "Bash(doctl apps list:*)",
       "Bash(cmd /c \"doctl apps list\")",
       "Bash(powershell -Command \"doctl apps list\")",
-      "Bash(powershell -Command:*)"
+      "Bash(powershell -Command:*)",
+      "Bash(cmd /c:*)",
+      "Bash(doctl apps list-deployments:*)",
+      "Bash(timeout /t 30 /nobreak)"
     ]
   }
 }
