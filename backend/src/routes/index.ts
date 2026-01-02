@@ -8,6 +8,7 @@ import searchRoutes from './search.routes';
 import applicationRoutes from './application.routes';
 import userRoutes from './user.routes';
 import messageRoutes from './message.routes';
+import seedRoutes from './seed.routes';
 import { orderController } from '../controllers';
 import { authenticateToken, authorizeRoles, validate, paginationRules } from '../middleware';
 
@@ -62,6 +63,9 @@ router.use('/users', userRoutes);
 
 // Message routes (contact form messages)
 router.use('/messages', messageRoutes);
+
+// Seed route (one-time database initialization)
+router.use('/seed', seedRoutes);
 
 // ============================================
 // NESTED ROUTES
