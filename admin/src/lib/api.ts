@@ -268,7 +268,9 @@ export interface LoginCredentials {
 export interface AuthUser {
   id: string;
   email: string;
-  name: string;
+  name?: string;
+  firstName?: string;
+  lastName?: string;
   role: 'ADMIN' | 'VENDOR' | 'CUSTOMER';
   brandId?: string | null;
 }

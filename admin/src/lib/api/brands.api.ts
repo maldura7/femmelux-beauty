@@ -55,7 +55,7 @@ export interface BrandProductsResponse {
  */
 export async function getAllBrands(filters: BrandFilters = {}): Promise<BrandsResponse> {
   try {
-    const queryString = buildQueryString(filters);
+    const queryString = buildQueryString(filters as Record<string, unknown>);
     const response = await api.get<ApiResponse<{ brands: Brand[] }>>(`/brands${queryString}`);
 
     const brands = response.data.data?.brands || [];

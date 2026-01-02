@@ -180,11 +180,13 @@ export function saveAuthData(data: {
   saveToken(data.accessToken);
   saveRefreshToken(data.refreshToken);
   // Convert AuthUser to User format for storage
+  const fullName = data.user.name || `${data.user.firstName || ''} ${data.user.lastName || ''}`.trim();
   const userToStore: User = {
     id: data.user.id,
     email: data.user.email,
-    firstName: data.user.name.split(' ')[0] || data.user.name,
-    lastName: data.user.name.split(' ').slice(1).join(' ') || '',
+    firstName: data.user.firstName || fullName.split(' ')[0] || '',
+    lastName: data.user.lastName || fullName.split(' ').slice(1).join(' ') || '',
+    name: fullName,
     role: data.user.role,
     brandId: data.user.brandId || undefined,
     status: true,

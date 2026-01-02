@@ -55,7 +55,8 @@
       "Bash(powershell -Command:*)",
       "Bash(cmd /c:*)",
       "Bash(doctl apps list-deployments:*)",
-      "Bash(timeout /t 30 /nobreak)"
+      "Bash(timeout /t 30 /nobreak)",
+      "Bash(where:*)"
     ]
   }
 }

@@ -98,7 +98,7 @@ export default function OrdersPage() {
     queryFn: () => getAllBrands(),
   });
 
-  const brands: Brand[] = brandsData?.data || [];
+  const brands: Brand[] = brandsData?.brands || [];
 
   // Fetch orders with filters
   const { data: ordersData, isLoading, error } = useQuery({

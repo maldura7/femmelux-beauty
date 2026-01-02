@@ -78,7 +78,7 @@ export interface AnalyticsFilters {
  */
 export async function getDashboardStats(filters?: AnalyticsFilters): Promise<DashboardStats> {
   try {
-    const queryString = buildQueryString(filters || {});
+    const queryString = buildQueryString((filters || {}) as Record<string, unknown>);
     const response = await api.get<ApiResponse<DashboardStats>>(`/analytics/dashboard${queryString}`);
     return response.data.data;
   } catch (error) {
@@ -91,7 +91,7 @@ export async function getDashboardStats(filters?: AnalyticsFilters): Promise<Das
  */
 export async function getSalesOverTime(filters?: AnalyticsFilters): Promise<SalesDataPoint[]> {
   try {
-    const queryString = buildQueryString(filters || {});
+    const queryString = buildQueryString((filters || {}) as Record<string, unknown>);
     const response = await api.get<ApiResponse<SalesDataPoint[]>>(`/analytics/sales${queryString}`);
     return response.data.data;
   } catch (error) {
@@ -104,7 +104,7 @@ export async function getSalesOverTime(filters?: AnalyticsFilters): Promise<Sale
  */
 export async function getOrdersByStatus(filters?: AnalyticsFilters): Promise<OrderStatusData[]> {
   try {
-    const queryString = buildQueryString(filters || {});
+    const queryString = buildQueryString((filters || {}) as Record<string, unknown>);
     const response = await api.get<ApiResponse<OrderStatusData[]>>(`/analytics/orders-by-status${queryString}`);
     return response.data.data;
   } catch (error) {
@@ -117,7 +117,7 @@ export async function getOrdersByStatus(filters?: AnalyticsFilters): Promise<Ord
  */
 export async function getTopProducts(limit: number = 5, filters?: AnalyticsFilters): Promise<TopProduct[]> {
   try {
-    const queryString = buildQueryString({ ...filters, limit });
+    const queryString = buildQueryString({ ...filters, limit } as Record<string, unknown>);
     const response = await api.get<ApiResponse<TopProduct[]>>(`/analytics/top-products${queryString}`);
     return response.data.data;
   } catch (error) {
@@ -130,7 +130,7 @@ export async function getTopProducts(limit: number = 5, filters?: AnalyticsFilte
  */
 export async function getTopBrands(limit: number = 5, filters?: AnalyticsFilters): Promise<TopBrand[]> {
   try {
-    const queryString = buildQueryString({ ...filters, limit });
+    const queryString = buildQueryString({ ...filters, limit } as Record<string, unknown>);
     const response = await api.get<ApiResponse<TopBrand[]>>(`/analytics/top-brands${queryString}`);
     return response.data.data;
   } catch (error) {
@@ -143,7 +143,7 @@ export async function getTopBrands(limit: number = 5, filters?: AnalyticsFilters
  */
 export async function getTopCustomers(limit: number = 5, filters?: AnalyticsFilters): Promise<TopCustomer[]> {
   try {
-    const queryString = buildQueryString({ ...filters, limit });
+    const queryString = buildQueryString({ ...filters, limit } as Record<string, unknown>);
     const response = await api.get<ApiResponse<TopCustomer[]>>(`/analytics/top-customers${queryString}`);
     return response.data.data;
   } catch (error) {
@@ -156,7 +156,7 @@ export async function getTopCustomers(limit: number = 5, filters?: AnalyticsFilt
  */
 export async function getRevenueByBrand(filters?: AnalyticsFilters): Promise<{ brandId: string; brandName: string; revenue: number }[]> {
   try {
-    const queryString = buildQueryString(filters || {});
+    const queryString = buildQueryString((filters || {}) as Record<string, unknown>);
     const response = await api.get<ApiResponse<{ brandId: string; brandName: string; revenue: number }[]>>(`/analytics/revenue-by-brand${queryString}`);
     return response.data.data;
   } catch (error) {
@@ -169,7 +169,7 @@ export async function getRevenueByBrand(filters?: AnalyticsFilters): Promise<{ b
  */
 export async function getRevenueByCategory(filters?: AnalyticsFilters): Promise<{ categoryId: string; categoryName: string; revenue: number }[]> {
   try {
-    const queryString = buildQueryString(filters || {});
+    const queryString = buildQueryString((filters || {}) as Record<string, unknown>);
     const response = await api.get<ApiResponse<{ categoryId: string; categoryName: string; revenue: number }[]>>(`/analytics/revenue-by-category${queryString}`);
     return response.data.data;
   } catch (error) {
@@ -182,7 +182,7 @@ export async function getRevenueByCategory(filters?: AnalyticsFilters): Promise<
  */
 export async function exportAnalyticsReport(filters?: AnalyticsFilters): Promise<Blob> {
   try {
-    const queryString = buildQueryString(filters || {});
+    const queryString = buildQueryString((filters || {}) as Record<string, unknown>);
     const response = await api.get(`/analytics/export${queryString}`, {
       responseType: 'blob',
     });

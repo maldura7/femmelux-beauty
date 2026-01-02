@@ -100,7 +100,7 @@ export async function getBrands(filters: BrandFilters = {}): Promise<BrandsRespo
       data: brands,
       pagination: {
         total: meta.total,
-        pages: meta.totalPages,
+        pages: meta.totalPages ?? 1,
         page: meta.page,
         limit: meta.limit,
       },

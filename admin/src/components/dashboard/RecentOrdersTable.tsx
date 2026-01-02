@@ -103,10 +103,10 @@ export function RecentOrdersTable({
                   </td>
                   <td className="py-3 px-2">
                     <div className="text-sm text-gray-900">
-                      {order.customer?.businessName || order.customer?.user?.name || 'N/A'}
+                      {order.customer?.businessName || `${order.customer?.firstName || ''} ${order.customer?.lastName || ''}`.trim() || 'N/A'}
                     </div>
                     <div className="text-xs text-gray-500">
-                      {order.customer?.user?.email || ''}
+                      {order.customer?.email || ''}
                     </div>
                   </td>
                   <td className="py-3 px-2">
@@ -120,7 +120,7 @@ export function RecentOrdersTable({
                     </span>
                   </td>
                   <td className="py-3 px-2 text-center">
-                    <OrderStatusBadge status={order.status} size="sm" showIcon={false} />
+                    <OrderStatusBadge status={(order.status?.toLowerCase() || 'pending') as 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled'} size="sm" showIcon={false} />
                   </td>
                 </tr>
               ))}

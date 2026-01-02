@@ -75,7 +75,7 @@ export async function getAllOrders(filters: OrderFilters = {}): Promise<OrdersRe
       startDate: filters.dateFrom || filters.startDate,
       endDate: filters.dateTo || filters.endDate,
     };
-    const queryString = buildQueryString(apiFilters);
+    const queryString = buildQueryString(apiFilters as Record<string, unknown>);
     const response = await api.get<ApiResponse<{ orders: Order[]; pagination?: PaginationMeta }>>(`/orders${queryString}`);
 
     // Handle both response formats: { data: Order[] } or { data: { orders: Order[] } }
@@ -94,7 +94,7 @@ export async function getAllOrders(filters: OrderFilters = {}): Promise<OrdersRe
       data: orders,
       pagination: {
         total: meta.total,
-        pages: meta.totalPages || meta.pages || 1,
+        pages: meta.totalPages || (meta as { pages?: number }).pages || 1,
         page: meta.page,
         limit: meta.limit,
       },
@@ -142,16 +142,22 @@ export async function getBrandOrders(
   filters: Omit<OrderFilters, 'brandId'> = {}
 ): Promise<OrdersResponse> {
   try {
-    const queryString = buildQueryString(filters);
+    const queryString = buildQueryString(filters as Record<string, unknown>);
     const response = await api.get<ApiResponse<Order[]>>(`/brands/${brandId}/orders${queryString}`);
 
+    const meta = response.data.meta || {
+      page: filters.page || 1,
+      limit: filters.limit || 10,
+      total: response.data.data.length,
+      totalPages: 1,
+    };
     return {
-      orders: response.data.data,
-      meta: response.data.meta || {
-        page: filters.page || 1,
-        limit: filters.limit || 10,
-        total: response.data.data.length,
-        totalPages: 1,
+      data: response.data.data,
+      pagination: {
+        total: meta.total,
+        pages: meta.totalPages || 1,
+        page: meta.page,
+        limit: meta.limit,
       },
     };
   } catch (error) {
@@ -164,16 +170,22 @@ export async function getBrandOrders(
  */
 export async function getMyOrders(filters: Omit<OrderFilters, 'customerId'> = {}): Promise<OrdersResponse> {
   try {
-    const queryString = buildQueryString(filters);
+    const queryString = buildQueryString(filters as Record<string, unknown>);
     const response = await api.get<ApiResponse<Order[]>>(`/orders/my${queryString}`);
 
+    const meta = response.data.meta || {
+      page: filters.page || 1,
+      limit: filters.limit || 10,
+      total: response.data.data.length,
+      totalPages: 1,
+    };
     return {
-      orders: response.data.data,
-      meta: response.data.meta || {
-        page: filters.page || 1,
-        limit: filters.limit || 10,
-        total: response.data.data.length,
-        totalPages: 1,
+      data: response.data.data,
+      pagination: {
+        total: meta.total,
+        pages: meta.totalPages || 1,
+        page: meta.page,
+        limit: meta.limit,
       },
     };
   } catch (error) {
@@ -276,7 +288,7 @@ export async function getRecentOrders(limit: number = 5): Promise<Order[]> {
  */
 export async function exportOrders(filters: OrderFilters = {}): Promise<Blob> {
   try {
-    const queryString = buildQueryString(filters);
+    const queryString = buildQueryString(filters as Record<string, unknown>);
     const response = await api.get(`/orders/export${queryString}`, {
       responseType: 'blob',
     });

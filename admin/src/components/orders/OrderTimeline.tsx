@@ -11,10 +11,11 @@ import {
 import { cn } from '@/lib/utils';
 import type { OrderStatus } from './OrderStatusBadge';
 
-interface StatusHistoryItem {
-  status: OrderStatus;
+export interface StatusHistoryItem {
+  status: OrderStatus | string; // Accept both lowercase and UPPERCASE
   timestamp: string;
   note?: string;
+  notes?: string; // Alias for note
 }
 
 interface OrderTimelineProps {
@@ -90,11 +91,19 @@ export function OrderTimeline({
   statusHistory = [],
   orientation = 'horizontal',
 }: OrderTimelineProps) {
+  // Normalize status to lowercase
+  const normalizedStatus = (currentStatus?.toLowerCase() || 'pending') as OrderStatus;
+  const normalizedHistory = statusHistory.map((h) => ({
+    ...h,
+    status: (h.status?.toLowerCase() || 'pending') as OrderStatus,
+    note: h.note || h.notes,
+  }));
+
   // Handle cancelled status separately
-  if (currentStatus === 'cancelled') {
+  if (normalizedStatus === 'cancelled') {
     const config = statusConfig.cancelled;
     const Icon = config.icon;
-    const cancelledEntry = statusHistory.find((h) => h.status === 'cancelled');
+    const cancelledEntry = normalizedHistory.find((h) => h.status === 'cancelled');
 
     return (
       <div className="flex flex-col items-center justify-center py-8">
@@ -127,11 +136,11 @@ export function OrderTimeline({
     );
   }
 
-  const currentIndex = orderFlow.indexOf(currentStatus);
+  const currentIndex = orderFlow.indexOf(normalizedStatus);
 
   // Get timestamp for a specific status from history
   const getStatusTimestamp = (status: OrderStatus): string | undefined => {
-    const entry = statusHistory.find((h) => h.status === status);
+    const entry = normalizedHistory.find((h) => h.status === status);
     return entry?.timestamp;
   };
 

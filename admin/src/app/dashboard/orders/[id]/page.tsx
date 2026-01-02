@@ -35,7 +35,7 @@ const getPaymentBadge = (status: string) => {
     refunded: 'error',
   };
   return (
-    <Badge variant={variants[status?.toLowerCase()] || 'warning'} size="lg">
+    <Badge variant={variants[status?.toLowerCase()] || 'warning'}>
       {status?.charAt(0).toUpperCase() + status?.slice(1).toLowerCase()}
     </Badge>
   );
@@ -208,8 +208,8 @@ export default function OrderDetailsPage() {
       <Card className="print:hidden">
         <CardBody>
           <OrderTimeline
-            currentStatus={order.status as OrderStatus}
-            statusHistory={order.statusHistory}
+            currentStatus={(order.status?.toLowerCase() || 'pending') as OrderStatus}
+            statusHistory={order.statusHistory as { status: string; timestamp: string; notes?: string }[]}
             orientation="horizontal"
           />
         </CardBody>
@@ -436,18 +436,18 @@ export default function OrderDetailsPage() {
                   <span className="text-gray-500">Subtotal</span>
                   <span className="font-medium">{formatCurrency(order.subtotal || 0)}</span>
                 </div>
-                {order.discount > 0 && (
+                {(order.discount ?? 0) > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500">Discount</span>
                     <span className="font-medium text-success-600">
-                      -{formatCurrency(order.discount)}
+                      -{formatCurrency(order.discount ?? 0)}
                     </span>
                   </div>
                 )}
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">Shipping</span>
                   <span className="font-medium">
-                    {order.shippingCost > 0 ? formatCurrency(order.shippingCost) : 'Free'}
+                    {(order.shippingCost ?? order.shipping ?? 0) > 0 ? formatCurrency(order.shippingCost ?? order.shipping ?? 0) : 'Free'}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">

@@ -151,7 +151,7 @@ export default function ImportPage() {
     const worksheet = workbook.Sheets[sheetName];
     const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
 
-    const parsedRows: ImportRow[] = jsonData.map((row: Record<string, unknown>, index) => {
+    const parsedRows: ImportRow[] = (jsonData as Record<string, unknown>[]).map((row, index) => {
       // Map Excel column headers to our data structure
       const mappedRow: Partial<ImportRow> = {
         brand: String(row['Brand'] || row['brand'] || ''),

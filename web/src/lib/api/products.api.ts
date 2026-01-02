@@ -192,20 +192,27 @@ export async function getProducts(filters: ProductFilters = {}): Promise<Product
     // Extract pagination from response.data.data.pagination (backend format)
     // or fallback to response.data.meta for backwards compatibility
     const paginationData = (productsData as { pagination?: { total: number; page: number; limit: number; pages: number } })?.pagination;
-    const meta = paginationData || response.data.meta || {
+    const meta = paginationData || response.data.meta;
+    const defaultMeta = {
       page: filters.page || 1,
       limit: filters.limit || 20,
       total: products.length,
-      totalPages: 1,
+      pages: 1,
     };
+    const finalMeta = meta ? {
+      total: meta.total,
+      page: meta.page,
+      limit: meta.limit,
+      pages: (meta as { pages?: number }).pages ?? (meta as { totalPages?: number }).totalPages ?? 1,
+    } : defaultMeta;
 
     return {
       data: products,
       pagination: {
-        total: meta.total,
-        pages: meta.pages || meta.totalPages || 1,
-        page: meta.page,
-        limit: meta.limit,
+        total: finalMeta.total,
+        pages: finalMeta.pages,
+        page: finalMeta.page,
+        limit: finalMeta.limit,
       },
     };
   } catch (error) {

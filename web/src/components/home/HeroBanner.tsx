@@ -73,7 +73,7 @@ export function HeroBanner({
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
-              href={ctaHref}
+              href={ctaHref as '/'}
               className="inline-flex items-center gap-2 px-8 py-4 bg-primary-500 hover:bg-primary-600 text-secondary-900 font-semibold rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl hover:shadow-primary-500/20 transform hover:-translate-y-0.5"
             >
               {ctaText}

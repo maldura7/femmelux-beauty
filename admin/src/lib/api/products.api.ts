@@ -107,7 +107,7 @@ export interface InventoryExportItem {
  */
 export async function getAllProducts(filters: ProductFilters = {}): Promise<ProductsResponse> {
   try {
-    const queryString = buildQueryString(filters);
+    const queryString = buildQueryString(filters as Record<string, unknown>);
     const response = await api.get<ApiResponse<{ products: Product[]; pagination: { total: number; page: number; limit: number; pages: number } }>>(`/products${queryString}`);
 
     const products = response.data.data?.products || [];
@@ -365,7 +365,7 @@ export async function getProductsByIds(ids: string[]): Promise<Product[]> {
  */
 export async function getInventory(filters: ProductFilters = {}): Promise<ProductsResponse> {
   try {
-    const queryString = buildQueryString(filters);
+    const queryString = buildQueryString(filters as Record<string, unknown>);
     const response = await api.get<ApiResponse<{ products: Product[]; pagination: { total: number; page: number; limit: number; pages: number } }>>(`/products/inventory${queryString}`);
 
     const products = response.data.data?.products || [];
