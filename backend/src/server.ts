@@ -134,8 +134,16 @@ app.get('/', (_req: Request, res: Response) => {
   });
 });
 
-// API Routes
-app.use('/api', routes);
+// API Routes - mounted at root since DigitalOcean App Platform routes /api to this service
+// In production, requests come in as /health, /brands, etc. (App Platform strips /api prefix)
+// In development, we still want /api prefix to work
+const apiBasePath = process.env.NODE_ENV === 'production' ? '/' : '/api';
+app.use(apiBasePath, routes);
+
+// Also mount at /api in production for backward compatibility during transition
+if (process.env.NODE_ENV === 'production') {
+  app.use('/api', routes);
+}
 
 // ============================================
 // ERROR HANDLING
