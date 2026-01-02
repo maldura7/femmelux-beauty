@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import {
   MagnifyingGlassIcon,
@@ -29,7 +29,7 @@ const sortOptions = [
   { value: 'price:desc', label: 'Price: High to Low' },
 ];
 
-export default function ProductsPage() {
+function ProductsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const user = useAuthStore((state) => state.user);
@@ -526,5 +526,21 @@ export default function ProductsPage() {
         activeFilterCount={activeFilterCount}
       />
     </div>
+  );
+}
+
+function ProductsPageLoading() {
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="h-8 w-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+}
+
+export default function ProductsPage() {
+  return (
+    <Suspense fallback={<ProductsPageLoading />}>
+      <ProductsPageContent />
+    </Suspense>
   );
 }
