@@ -50,7 +50,7 @@ export default function RegisterPage() {
       setIsAuthenticated(true);
 
       toast.success('Account created! Please complete your business application.');
-      router.push(redirect);
+      router.push(redirect as '/');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Registration failed');
     } finally {
