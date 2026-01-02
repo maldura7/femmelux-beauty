@@ -20,7 +20,7 @@ services:
   # Backend API
   - name: backend
     github:
-      repo: YOUR_GITHUB_USERNAME/femmelux-beauty
+      repo: maldura7/femmelux-beauty
       branch: main
       deploy_on_push: true
     source_dir: /backend
@@ -72,7 +72,7 @@ services:
   # Admin Panel (Next.js)
   - name: admin
     github:
-      repo: YOUR_GITHUB_USERNAME/femmelux-beauty
+      repo: maldura7/femmelux-beauty
       branch: main
       deploy_on_push: true
     source_dir: /admin
@@ -97,7 +97,7 @@ services:
   # Web Storefront (Next.js)
   - name: web
     github:
-      repo: YOUR_GITHUB_USERNAME/femmelux-beauty
+      repo: maldura7/femmelux-beauty
       branch: main
       deploy_on_push: true
     source_dir: /web
