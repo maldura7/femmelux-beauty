@@ -84,6 +84,7 @@ services:
     instance_size_slug: basic-xxs
     routes:
       - path: /admin
+        preserve_path_prefix: true
     envs:
       - key: NODE_ENV
         value: production

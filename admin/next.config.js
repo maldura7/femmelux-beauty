@@ -6,8 +6,9 @@ const nextConfig = {
   // Output standalone build for Docker
   output: 'standalone',
 
-  // Note: Don't use basePath - DigitalOcean App Platform strips the /admin prefix
-  // when routing to this service, so Next.js receives requests at /
+  // Base path for deployment under /admin route
+  // With preserve_path_prefix: true in app.yaml, the /admin prefix is kept
+  basePath: process.env.NODE_ENV === 'production' ? '/admin' : '',
 
   // Configure image domains for Next.js Image component
   images: {
