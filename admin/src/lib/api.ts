@@ -309,4 +309,49 @@ export async function logout(): Promise<void> {
   }
 }
 
+export interface RegisterCredentials {
+  email: string;
+  password: string;
+  name: string;
+}
+
+/**
+ * Register a new user
+ */
+export async function register(credentials: RegisterCredentials): Promise<LoginResponse> {
+  try {
+    const response = await api.post<ApiResponse<LoginResponse>>('/auth/register', credentials);
+    return response.data.data;
+  } catch (error) {
+    throw new Error(getErrorMessage(error));
+  }
+}
+
+/**
+ * Request password reset email
+ */
+export async function forgotPassword(email: string): Promise<void> {
+  try {
+    await api.post('/auth/forgot-password', { email });
+  } catch (error) {
+    throw new Error(getErrorMessage(error));
+  }
+}
+
+export interface ResetPasswordData {
+  token: string;
+  password: string;
+}
+
+/**
+ * Reset password with token
+ */
+export async function resetPassword(data: ResetPasswordData): Promise<void> {
+  try {
+    await api.post('/auth/reset-password', data);
+  } catch (error) {
+    throw new Error(getErrorMessage(error));
+  }
+}
+
 export default api;
