@@ -69,8 +69,8 @@ export const config = {
   // Redis
   redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',
 
-  // CORS - Strict in production
-  corsOrigin: process.env.CORS_ORIGIN?.split(',').map((s) => s.trim()) ||
+  // CORS - Strict in production (support both CORS_ORIGIN and CORS_ORIGINS)
+  corsOrigin: (process.env.CORS_ORIGIN || process.env.CORS_ORIGINS)?.split(',').map((s) => s.trim()) ||
     (isProduction ? [] : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:5173']),
 
   // File Upload
