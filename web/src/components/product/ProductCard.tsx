@@ -37,7 +37,8 @@ export function ProductCard({ product, user, onAddToCart, showBrand = true }: Pr
   // Check if user can see prices and place orders
   // Use both: API returns null prices OR user object check
   const userCanSeePrices = pricesAvailable || canSeePrices(user);
-  const userCanOrder = pricesAvailable && canPlaceOrders(user);
+  // User can order if logged in and prices are available (API returned prices means user is authorized)
+  const userCanOrder = pricesAvailable && user !== null;
 
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault();
