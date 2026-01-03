@@ -1,217 +1,299 @@
-# FemmeLux Beauty - DigitalOcean Deployment Guide
+# FemmeLux Beauty - Deployment Guide (Vercel + Railway)
 
-This guide walks you through deploying FemmeLux Beauty to DigitalOcean App Platform.
+## Architecture Overview
 
-## Prerequisites
-
-1. A DigitalOcean account
-2. Your code pushed to a GitHub repository
-3. A domain name (optional, but recommended)
+| Service | Platform | URL Pattern |
+|---------|----------|-------------|
+| Admin Panel | Vercel | admin.femmelux.com / femmelux-admin.vercel.app |
+| Web Storefront | Vercel | femmelux.com / femmelux-web.vercel.app |
+| Backend API | Railway | api.femmelux.com / femmelux-api.up.railway.app |
+| PostgreSQL | Railway | (internal connection) |
 
 ## Estimated Monthly Costs
 
-| Service | Size | Cost |
-|---------|------|------|
-| Backend API | basic-xxs | $5/month |
-| Admin Panel | basic-xxs | $5/month |
-| Web Storefront | basic-xxs | $5/month |
-| PostgreSQL | db-s-1vcpu-1gb | $15/month |
-| **Total** | | **~$30/month** |
+| Service | Platform | Cost |
+|---------|----------|------|
+| Admin Panel | Vercel (Hobby) | Free |
+| Web Storefront | Vercel (Hobby) | Free |
+| Backend API | Railway | ~$5/month |
+| PostgreSQL | Railway | ~$5/month |
+| **Total** | | **~$10/month** |
 
-*Note: Add Redis (~$15/month) if you need caching/sessions*
+*Note: Vercel Hobby is free for personal projects. Pro plan is $20/month if needed.*
 
-## Step 1: Prepare Your Repository
+---
 
-1. Push your code to GitHub:
-   ```bash
-   git init
-   git add .
-   git commit -m "Initial commit"
-   git remote add origin https://github.com/YOUR_USERNAME/femmelux-beauty.git
-   git push -u origin main
-   ```
+## Step 1: Deploy Backend to Railway
 
-2. Update `.do/app.yaml`:
-   - Replace `maldura7` with your actual GitHub username
+### 1.1 Create Railway Account
+1. Go to https://railway.app
+2. Sign up with GitHub
 
-## Step 2: Create the App on DigitalOcean
+### 1.2 Create New Project
+1. Click "New Project"
+2. Select "Deploy from GitHub repo"
+3. Connect your GitHub account if not already connected
+4. Select the `maldura7/femmelux-beauty` repository
 
-### Option A: Using the DigitalOcean Console
+### 1.3 Configure Backend Service
+1. After the repo is connected, click on the created service
+2. Go to "Settings" tab
+3. Set **Root Directory** to `backend`
+4. Railway will auto-detect it's a Node.js app
 
-1. Go to [DigitalOcean App Platform](https://cloud.digitalocean.com/apps)
-2. Click "Create App"
-3. Select "GitHub" and authorize access
-4. Choose your repository and branch
-5. DigitalOcean will auto-detect the `.do/app.yaml` configuration
-6. Review and click "Create Resources"
+### 1.4 Add PostgreSQL Database
+1. Click "+ New" in your project
+2. Select "Database" > "Add PostgreSQL"
+3. Railway will create a database and provide a `DATABASE_URL`
 
-### Option B: Using doctl CLI
+### 1.5 Configure Environment Variables
+Click on your backend service, go to "Variables" tab, and add:
 
-1. Install doctl:
-   ```bash
-   # macOS
-   brew install doctl
+```
+NODE_ENV=production
+PORT=4000
+DATABASE_URL=${{Postgres.DATABASE_URL}}
+JWT_ACCESS_SECRET=<generate-a-secure-random-string>
+JWT_REFRESH_SECRET=<generate-a-different-secure-random-string>
+JWT_ACCESS_EXPIRES_IN=15m
+JWT_REFRESH_EXPIRES_IN=7d
+CORS_ORIGINS=https://your-admin.vercel.app,https://your-web.vercel.app
+```
 
-   # Windows
-   scoop install doctl
-   ```
-
-2. Authenticate:
-   ```bash
-   doctl auth init
-   ```
-
-3. Create the app:
-   ```bash
-   doctl apps create --spec .do/app.yaml
-   ```
-
-## Step 3: Configure Environment Variables
-
-After the app is created, configure these secrets in the DigitalOcean console:
-
-### Backend Secrets (Required)
-
-| Variable | Description |
-|----------|-------------|
-| `JWT_ACCESS_SECRET` | Generate with: `openssl rand -base64 64` |
-| `JWT_REFRESH_SECRET` | Generate with: `openssl rand -base64 64` |
-| `SMTP_HOST` | Your SMTP server (e.g., smtp.gmail.com) |
-| `SMTP_USER` | SMTP username/email |
-| `SMTP_PASS` | SMTP password or app password |
-| `SMTP_FROM` | Sender email address |
-
-### Optional Secrets
-
-| Variable | Description |
-|----------|-------------|
-| `REDIS_URL` | Redis connection URL (if using Redis) |
-
-To set secrets via CLI:
+To generate secure secrets, run in terminal:
 ```bash
-doctl apps update YOUR_APP_ID --spec .do/app.yaml
+node -e "console.log(require('crypto').randomBytes(64).toString('base64'))"
 ```
 
-## Step 4: Database Setup
+### 1.6 Deploy
+1. Push to GitHub - Railway auto-deploys
+2. Or click "Deploy" manually
+3. Wait for the build to complete
+4. Note the Railway URL (click "Settings" > "Domain")
 
-The PostgreSQL database is automatically provisioned. To run migrations:
-
-1. The Dockerfile automatically runs `prisma migrate deploy` on startup
-2. To seed data, connect to your app's console:
-   ```bash
-   doctl apps console YOUR_APP_ID backend
-   npx prisma db seed
-   ```
-
-## Step 5: Custom Domain (Optional)
-
-1. In the DigitalOcean console, go to your app's Settings
-2. Click "Domains"
-3. Add your custom domains:
-   - `femmelux.com` → Web Storefront
-   - `admin.femmelux.com` → Admin Panel
-   - `api.femmelux.com` → Backend API
-
-4. Update your DNS records:
-   ```
-   Type: CNAME
-   Name: @
-   Value: your-app.ondigitalocean.app
-   ```
-
-5. Update CORS_ORIGINS in your app settings to include your custom domains
-
-## Step 6: File Storage (Recommended for Production)
-
-For production, use DigitalOcean Spaces instead of local file storage:
-
-1. Create a Space in your DigitalOcean console
-2. Generate Spaces access keys
-3. Add these environment variables to your backend:
-   ```
-   DO_SPACES_KEY=your-key
-   DO_SPACES_SECRET=your-secret
-   DO_SPACES_ENDPOINT=nyc3.digitaloceanspaces.com
-   DO_SPACES_BUCKET=femmelux-uploads
-   DO_SPACES_CDN_ENDPOINT=femmelux-uploads.nyc3.cdn.digitaloceanspaces.com
-   ```
-
-## Monitoring & Logs
-
-### View Logs
+### 1.7 Run Database Migrations
+After deploy, click on your service and open the "Shell" tab:
 ```bash
-# Via CLI
-doctl apps logs YOUR_APP_ID --type=run
-
-# Or in the console
-# Go to Apps > Your App > Runtime Logs
+npx prisma migrate deploy
+npx prisma db seed
 ```
 
-### View Metrics
-The DigitalOcean console provides CPU, memory, and bandwidth metrics for each component.
+---
 
-## Scaling
+## Step 2: Deploy Admin Panel to Vercel
 
-To scale your app, update the `instance_count` or `instance_size_slug` in `.do/app.yaml`:
+### 2.1 Create Vercel Account
+1. Go to https://vercel.com
+2. Sign up with GitHub
 
-```yaml
-services:
-  - name: backend
-    instance_count: 2  # Add more instances
-    instance_size_slug: basic-xs  # Upgrade instance size
+### 2.2 Import Project
+1. Click "Add New" > "Project"
+2. Import from GitHub: `maldura7/femmelux-beauty`
+3. **IMPORTANT**: Set Root Directory to `admin`
+
+### 2.3 Configure Build Settings
+- **Framework Preset**: Next.js (auto-detected)
+- **Root Directory**: `admin`
+- **Build Command**: `npm run build`
+- **Output Directory**: Leave default
+
+### 2.4 Set Environment Variables
+Click "Environment Variables" and add:
+```
+NEXT_PUBLIC_API_URL=https://your-railway-url.up.railway.app/api
+NEXT_PUBLIC_SITE_NAME=FemmeLux Admin
 ```
 
-Available sizes:
-- `basic-xxs`: 512 MB RAM, 1 vCPU ($5/month)
-- `basic-xs`: 1 GB RAM, 1 vCPU ($10/month)
-- `basic-s`: 2 GB RAM, 1 vCPU ($20/month)
-- `basic-m`: 4 GB RAM, 2 vCPU ($40/month)
+### 2.5 Deploy
+Click "Deploy" and wait for the build to complete.
+
+### 2.6 Note Your URL
+After deployment, note the URL (e.g., `femmelux-admin.vercel.app`)
+
+---
+
+## Step 3: Deploy Web Storefront to Vercel
+
+### 3.1 Create Another Vercel Project
+1. Click "Add New" > "Project"
+2. Import the same GitHub repo again
+3. **IMPORTANT**: Set Root Directory to `web`
+
+### 3.2 Configure Build Settings
+- **Framework Preset**: Next.js (auto-detected)
+- **Root Directory**: `web`
+- **Build Command**: `npm run build`
+- **Output Directory**: Leave default
+
+### 3.3 Set Environment Variables
+```
+NEXT_PUBLIC_API_URL=https://your-railway-url.up.railway.app/api
+NEXT_PUBLIC_SITE_NAME=FemmeLux Beauty
+```
+
+### 3.4 Deploy
+Click "Deploy" and wait for the build to complete.
+
+---
+
+## Step 4: Update CORS Origins on Railway
+
+Now that you have your Vercel URLs, update the backend's CORS settings:
+
+1. Go to Railway > Your Project > Backend Service > Variables
+2. Update `CORS_ORIGINS`:
+```
+CORS_ORIGINS=https://femmelux-admin.vercel.app,https://femmelux-web.vercel.app
+```
+3. Railway will auto-redeploy with the new settings
+
+---
+
+## Step 5: Verify Deployment
+
+### Test Backend API
+```bash
+curl https://your-railway-url.up.railway.app/api/health
+```
+
+### Test Admin Login
+1. Go to your admin Vercel URL
+2. Login with the seeded admin credentials
+
+### Test Web Storefront
+1. Go to your web Vercel URL
+2. Browse products and test functionality
+
+---
+
+## Custom Domains (Optional)
+
+### Vercel Custom Domains
+1. Go to Project Settings > Domains
+2. Add your domain (e.g., `admin.femmelux.com`)
+3. Add DNS records as instructed:
+   - CNAME record pointing to `cname.vercel-dns.com`
+
+### Railway Custom Domains
+1. Go to Service Settings > Networking > Custom Domain
+2. Add your domain (e.g., `api.femmelux.com`)
+3. Add DNS records as instructed
+
+### Update CORS After Adding Custom Domains
+Remember to update `CORS_ORIGINS` to include custom domains:
+```
+CORS_ORIGINS=https://admin.femmelux.com,https://femmelux.com
+```
+
+---
+
+## Environment Variables Reference
+
+### Backend (Railway)
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `NODE_ENV` | Environment mode | `production` |
+| `PORT` | Server port | `4000` |
+| `DATABASE_URL` | PostgreSQL connection | `${{Postgres.DATABASE_URL}}` |
+| `JWT_ACCESS_SECRET` | Access token signing key | 64-char random string |
+| `JWT_REFRESH_SECRET` | Refresh token signing key | 64-char random string |
+| `JWT_ACCESS_EXPIRES_IN` | Access token expiry | `15m` |
+| `JWT_REFRESH_EXPIRES_IN` | Refresh token expiry | `7d` |
+| `CORS_ORIGINS` | Allowed origins (comma-separated) | `https://admin.vercel.app,https://web.vercel.app` |
+
+### Admin Panel (Vercel)
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `NEXT_PUBLIC_API_URL` | Backend API URL with /api | `https://api.railway.app/api` |
+| `NEXT_PUBLIC_SITE_NAME` | Site display name | `FemmeLux Admin` |
+
+### Web Storefront (Vercel)
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `NEXT_PUBLIC_API_URL` | Backend API URL with /api | `https://api.railway.app/api` |
+| `NEXT_PUBLIC_SITE_NAME` | Site display name | `FemmeLux Beauty` |
+
+---
 
 ## Troubleshooting
 
-### Build Failures
-- Check the build logs in the DigitalOcean console
-- Ensure all dependencies are in `package.json`
-- Verify Dockerfile syntax
-
-### Database Connection Issues
-- Check that `DATABASE_URL` is properly set
-- Verify the database is in the same region
-- Check connection limits
+### API Not Responding
+1. Check Railway deployment logs
+2. Verify DATABASE_URL is correctly set (should reference Postgres service)
+3. Ensure Prisma migrations ran successfully
+4. Check if PORT is set to 4000
 
 ### CORS Errors
-- Ensure `CORS_ORIGINS` includes all your frontend URLs
-- Include both http and https if needed
+1. Open browser DevTools > Network tab
+2. Verify the error shows your frontend domain
+3. Ensure CORS_ORIGINS includes the exact domain (with https://)
+4. No trailing slashes in URLs
+5. Redeploy backend after updating CORS_ORIGINS
 
-### Health Check Failures
-- The backend must respond to GET requests on port 4000
-- Check if the app is starting correctly in logs
+### Build Failures on Vercel
+1. Check that Root Directory is set correctly (`admin` or `web`)
+2. Verify all dependencies are in package.json
+3. Check build logs for specific TypeScript errors
+4. Ensure NEXT_PUBLIC_API_URL is set
+
+### Database Connection Issues
+1. Verify DATABASE_URL references `${{Postgres.DATABASE_URL}}`
+2. Check Railway PostgreSQL service is running
+3. Try re-linking the database variable
+
+### 401 Unauthorized on Admin
+1. Check if JWT secrets are set correctly
+2. Verify tokens are being sent in headers
+3. Check if CORS is allowing credentials
+
+---
 
 ## Useful Commands
 
+### Railway CLI (optional)
 ```bash
-# List apps
-doctl apps list
+# Install
+npm i -g @railway/cli
 
-# Get app info
-doctl apps get YOUR_APP_ID
+# Login
+railway login
 
-# Update app
-doctl apps update YOUR_APP_ID --spec .do/app.yaml
+# Link to project
+railway link
 
-# Restart component
-doctl apps restart YOUR_APP_ID
+# View logs
+railway logs
 
-# Delete app
-doctl apps delete YOUR_APP_ID
+# Open shell
+railway shell
 ```
+
+### Vercel CLI (optional)
+```bash
+# Install
+npm i -g vercel
+
+# Login
+vercel login
+
+# Deploy
+vercel --prod
+
+# View logs
+vercel logs
+```
+
+---
 
 ## Security Checklist
 
-- [ ] Use strong, unique JWT secrets
-- [ ] Enable HTTPS (automatic with DigitalOcean)
-- [ ] Set proper CORS origins
-- [ ] Use managed database with SSL
-- [ ] Regularly rotate secrets
-- [ ] Enable 2FA on your DigitalOcean account
-- [ ] Set up alerts for unusual activity
+- [ ] Use strong, unique JWT secrets (64+ characters)
+- [ ] HTTPS enabled (automatic on both platforms)
+- [ ] Set restrictive CORS origins (no wildcards)
+- [ ] Database uses SSL (automatic on Railway)
+- [ ] Enable 2FA on Vercel and Railway accounts
+- [ ] Regularly rotate JWT secrets
+- [ ] Monitor for unusual activity in logs

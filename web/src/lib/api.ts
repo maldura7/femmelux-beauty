@@ -5,26 +5,17 @@ import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'ax
 // ============================================
 
 /**
- * Get the API URL dynamically based on hostname
- * In production (non-localhost), use relative /api path
- * This works because DigitalOcean routes /api/* to the backend
+ * Get the API URL from environment variable
+ * With Vercel, the API is hosted on a separate domain (Railway/Render)
  */
 function getApiUrl(): string {
-  // In browser, check if we're on production (not localhost)
-  if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname;
-    if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
-      // In production, use relative path - DigitalOcean routes /api to backend
-      return '/api';
-    }
-  }
-
-  // Fall back to env variable or localhost
+  // Use environment variable if set (required for production)
   if (process.env.NEXT_PUBLIC_API_URL) {
     const url = process.env.NEXT_PUBLIC_API_URL;
     return url.endsWith('/api') ? url : `${url}/api`;
   }
 
+  // Default for development
   return 'http://localhost:4000/api';
 }
 
@@ -44,11 +35,8 @@ const api: AxiosInstance = axios.create({
 
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    // Dynamically set baseURL at runtime (handles SSR to client transition)
+    // Get token from localStorage (client-side only)
     if (typeof window !== 'undefined') {
-      config.baseURL = getApiUrl();
-
-      // Get token from localStorage (client-side only)
       const token = localStorage.getItem('accessToken');
       if (token && config.headers) {
         config.headers.Authorization = `Bearer ${token}`;

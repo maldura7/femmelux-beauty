@@ -4,9 +4,6 @@ const nextConfig: NextConfig = {
   // Enable React Strict Mode
   reactStrictMode: true,
 
-  // Output standalone build for Docker
-  output: 'standalone',
-
   // Image optimization configuration
   images: {
     remotePatterns: [

@@ -1,26 +1,17 @@
 // Navigation helper for admin panel
-// Handles base path prefix for DigitalOcean deployment
+// Works with both Vercel (separate domains) and local development
 
 /**
- * Get the base path dynamically based on hostname
- * Returns '/admin' in production, '' in development
+ * Get the base path - returns empty string for Vercel/local
+ * since each app gets its own domain on Vercel
  */
 function getBasePath(): string {
-  // Check if we're in browser and not on localhost
-  if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname;
-    if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
-      return '/admin';
-    }
-  }
-
-  // Fall back to env variable or empty string
   return process.env.NEXT_PUBLIC_BASE_PATH || '';
 }
 
 /**
- * Get the full path with base path prefix for navigation
- * Use this for all internal navigation in production
+ * Get the full path for navigation
+ * With Vercel, no base path is needed since admin gets its own domain
  */
 export function getPath(path: string): string {
   if (!path.startsWith('/')) {

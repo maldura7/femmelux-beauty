@@ -10,21 +10,9 @@ import axios, {
 // ============================================
 
 // Determine API URL based on environment
-// In production browser, use relative URL so requests go through DigitalOcean routing
-// In development or SSR, use the full URL
+// With Vercel, the API is hosted on a separate domain (Railway/Render)
 function getApiUrl(): string {
-  // In browser, check if we're on localhost or production
-  if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname;
-
-    // If we're NOT on localhost, use relative /api path
-    // This works with DigitalOcean's routing which sends /api/* to the backend
-    if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
-      return '/api';
-    }
-  }
-
-  // If NEXT_PUBLIC_API_URL is explicitly set and non-empty, use it
+  // Use environment variable if set (required for production)
   if (process.env.NEXT_PUBLIC_API_URL) {
     return process.env.NEXT_PUBLIC_API_URL;
   }
@@ -33,7 +21,7 @@ function getApiUrl(): string {
   return 'http://localhost:4000/api';
 }
 
-// Initial URL - will be updated dynamically in browser
+// API URL from environment or default
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 const TIMEOUT = 30000; // 30 seconds
 
@@ -87,12 +75,6 @@ const api: AxiosInstance = axios.create({
 
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    // Dynamically set baseURL in browser to handle production routing
-    // This ensures we use /api in production browser instead of localhost
-    if (typeof window !== 'undefined') {
-      config.baseURL = getApiUrl();
-    }
-
     // Skip token for SSR
     if (typeof window === 'undefined') {
       return config;
