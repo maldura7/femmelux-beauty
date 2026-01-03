@@ -19,10 +19,11 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Set build-time environment variables
-ARG NEXT_PUBLIC_API_URL
-ARG NEXT_PUBLIC_SITE_URL
-ARG NEXT_PUBLIC_SITE_NAME
+# Set build-time environment variables with production defaults
+# These use relative paths which work with DigitalOcean's path-based routing
+ARG NEXT_PUBLIC_API_URL="/api"
+ARG NEXT_PUBLIC_SITE_URL="/admin"
+ARG NEXT_PUBLIC_SITE_NAME="FemmeLux Admin"
 
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
