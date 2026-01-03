@@ -1,4 +1,4 @@
-# FemmeLux Beauty - Deployment Guide (Vercel + Railway)
+# FemmeLux Beauty - Deployment Guide (Vercel + Render)
 
 ## Architecture Overview
 
@@ -6,8 +6,8 @@
 |---------|----------|-------------|
 | Admin Panel | Vercel | admin.femmelux.com / femmelux-admin.vercel.app |
 | Web Storefront | Vercel | femmelux.com / femmelux-web.vercel.app |
-| Backend API | Railway | api.femmelux.com / femmelux-api.up.railway.app |
-| PostgreSQL | Railway | (internal connection) |
+| Backend API | Render | api.femmelux.com / femmelux-backend.onrender.com |
+| PostgreSQL | Render | (internal connection) |
 
 ## Estimated Monthly Costs
 
@@ -15,50 +15,60 @@
 |---------|----------|------|
 | Admin Panel | Vercel (Hobby) | Free |
 | Web Storefront | Vercel (Hobby) | Free |
-| Backend API | Railway | ~$5/month |
-| PostgreSQL | Railway | ~$5/month |
-| **Total** | | **~$10/month** |
+| Backend API | Render (Free) | Free |
+| PostgreSQL | Render (Free) | Free |
+| **Total** | | **Free** |
 
-*Note: Vercel Hobby is free for personal projects. Pro plan is $20/month if needed.*
+*Note: Free tier has some limitations (spins down after 15 min inactivity). Paid plans start at $7/month for always-on.*
 
 ---
 
-## Step 1: Deploy Backend to Railway
+## Step 1: Deploy Backend to Render
 
-### 1.1 Create Railway Account
-1. Go to https://railway.app
+### 1.1 Create Render Account
+1. Go to https://render.com
 2. Sign up with GitHub
 
-### 1.2 Create New Project
-1. Click "New Project"
-2. Select "Deploy from GitHub repo"
-3. Connect your GitHub account if not already connected
-4. Select the `maldura7/femmelux-beauty` repository
+### 1.2 Create New Web Service
+1. Click "New +" → "Web Service"
+2. Connect your GitHub account if not already connected
+3. Select the `maldura7/femmelux-beauty` repository
+4. Click "Connect"
 
-### 1.3 Configure Backend Service
-1. After the repo is connected, click on the created service
-2. Go to "Settings" tab
-3. Set **Root Directory** to `backend`
-4. Railway will auto-detect it's a Node.js app
+### 1.3 Configure Service Settings
+- **Name**: `femmelux-backend`
+- **Region**: Oregon (US West) or closest to you
+- **Branch**: `main`
+- **Root Directory**: `backend`
+- **Runtime**: Node
+- **Build Command**: `npm install && npm run build && npx prisma generate`
+- **Start Command**: `npx prisma migrate deploy && npm start`
+- **Instance Type**: Free
 
 ### 1.4 Add PostgreSQL Database
-1. Click "+ New" in your project
-2. Select "Database" > "Add PostgreSQL"
-3. Railway will create a database and provide a `DATABASE_URL`
+1. Click "New +" → "PostgreSQL"
+2. Configure:
+   - **Name**: `femmelux-db`
+   - **Database**: `femmelux`
+   - **User**: `femmelux_user`
+   - **Region**: Same as backend (Oregon)
+   - **Plan**: Free
+3. Click "Create Database"
+4. Copy the **Internal Database URL** (starts with `postgres://`)
 
 ### 1.5 Configure Environment Variables
-Click on your backend service, go to "Variables" tab, and add:
+Go to your backend service → "Environment" tab → Add:
 
-```
-NODE_ENV=production
-PORT=4000
-DATABASE_URL=${{Postgres.DATABASE_URL}}
-JWT_ACCESS_SECRET=<generate-a-secure-random-string>
-JWT_REFRESH_SECRET=<generate-a-different-secure-random-string>
-JWT_ACCESS_EXPIRES_IN=15m
-JWT_REFRESH_EXPIRES_IN=7d
-CORS_ORIGINS=https://your-admin.vercel.app,https://your-web.vercel.app
-```
+| Key | Value |
+|-----|-------|
+| `NODE_ENV` | `production` |
+| `PORT` | `4000` |
+| `DATABASE_URL` | (paste Internal Database URL from step 1.4) |
+| `JWT_ACCESS_SECRET` | (generate: see below) |
+| `JWT_REFRESH_SECRET` | (generate: see below) |
+| `JWT_ACCESS_EXPIRES_IN` | `15m` |
+| `JWT_REFRESH_EXPIRES_IN` | `7d` |
+| `CORS_ORIGINS` | `https://your-admin.vercel.app,https://your-web.vercel.app` |
 
 To generate secure secrets, run in terminal:
 ```bash
@@ -66,17 +76,15 @@ node -e "console.log(require('crypto').randomBytes(64).toString('base64'))"
 ```
 
 ### 1.6 Deploy
-1. Push to GitHub - Railway auto-deploys
-2. Or click "Deploy" manually
-3. Wait for the build to complete
-4. Note the Railway URL (click "Settings" > "Domain")
+1. Click "Create Web Service"
+2. Wait for the build to complete (first build takes ~5 min)
+3. Note your Render URL (e.g., `https://femmelux-backend.onrender.com`)
 
-### 1.7 Run Database Migrations
-After deploy, click on your service and open the "Shell" tab:
-```bash
-npx prisma migrate deploy
-npx prisma db seed
-```
+### 1.7 Seed Database (First Time Only)
+After successful deployment:
+1. Go to your backend service
+2. Click "Shell" tab
+3. Run: `npx prisma db seed`
 
 ---
 
@@ -87,7 +95,7 @@ npx prisma db seed
 2. Sign up with GitHub
 
 ### 2.2 Import Project
-1. Click "Add New" > "Project"
+1. Click "Add New" → "Project"
 2. Import from GitHub: `maldura7/femmelux-beauty`
 3. **IMPORTANT**: Set Root Directory to `admin`
 
@@ -99,10 +107,11 @@ npx prisma db seed
 
 ### 2.4 Set Environment Variables
 Click "Environment Variables" and add:
-```
-NEXT_PUBLIC_API_URL=https://your-railway-url.up.railway.app/api
-NEXT_PUBLIC_SITE_NAME=FemmeLux Admin
-```
+
+| Key | Value |
+|-----|-------|
+| `NEXT_PUBLIC_API_URL` | `https://femmelux-backend.onrender.com/api` |
+| `NEXT_PUBLIC_SITE_NAME` | `FemmeLux Admin` |
 
 ### 2.5 Deploy
 Click "Deploy" and wait for the build to complete.
@@ -115,7 +124,7 @@ After deployment, note the URL (e.g., `femmelux-admin.vercel.app`)
 ## Step 3: Deploy Web Storefront to Vercel
 
 ### 3.1 Create Another Vercel Project
-1. Click "Add New" > "Project"
+1. Click "Add New" → "Project"
 2. Import the same GitHub repo again
 3. **IMPORTANT**: Set Root Directory to `web`
 
@@ -126,26 +135,27 @@ After deployment, note the URL (e.g., `femmelux-admin.vercel.app`)
 - **Output Directory**: Leave default
 
 ### 3.3 Set Environment Variables
-```
-NEXT_PUBLIC_API_URL=https://your-railway-url.up.railway.app/api
-NEXT_PUBLIC_SITE_NAME=FemmeLux Beauty
-```
+
+| Key | Value |
+|-----|-------|
+| `NEXT_PUBLIC_API_URL` | `https://femmelux-backend.onrender.com/api` |
+| `NEXT_PUBLIC_SITE_NAME` | `FemmeLux Beauty` |
 
 ### 3.4 Deploy
 Click "Deploy" and wait for the build to complete.
 
 ---
 
-## Step 4: Update CORS Origins on Railway
+## Step 4: Update CORS Origins on Render
 
 Now that you have your Vercel URLs, update the backend's CORS settings:
 
-1. Go to Railway > Your Project > Backend Service > Variables
+1. Go to Render Dashboard → `femmelux-backend` → Environment
 2. Update `CORS_ORIGINS`:
 ```
-CORS_ORIGINS=https://femmelux-admin.vercel.app,https://femmelux-web.vercel.app
+https://femmelux-admin.vercel.app,https://femmelux-web.vercel.app
 ```
-3. Railway will auto-redeploy with the new settings
+3. Click "Save Changes" - Render will auto-redeploy
 
 ---
 
@@ -153,12 +163,14 @@ CORS_ORIGINS=https://femmelux-admin.vercel.app,https://femmelux-web.vercel.app
 
 ### Test Backend API
 ```bash
-curl https://your-railway-url.up.railway.app/api/health
+curl https://femmelux-backend.onrender.com/api/health
 ```
 
 ### Test Admin Login
 1. Go to your admin Vercel URL
-2. Login with the seeded admin credentials
+2. Login with the seeded admin credentials:
+   - Email: `admin@femmelux.com`
+   - Password: `admin123`
 
 ### Test Web Storefront
 1. Go to your web Vercel URL
@@ -169,33 +181,33 @@ curl https://your-railway-url.up.railway.app/api/health
 ## Custom Domains (Optional)
 
 ### Vercel Custom Domains
-1. Go to Project Settings > Domains
+1. Go to Project Settings → Domains
 2. Add your domain (e.g., `admin.femmelux.com`)
 3. Add DNS records as instructed:
    - CNAME record pointing to `cname.vercel-dns.com`
 
-### Railway Custom Domains
-1. Go to Service Settings > Networking > Custom Domain
+### Render Custom Domains
+1. Go to your service → Settings → Custom Domains
 2. Add your domain (e.g., `api.femmelux.com`)
 3. Add DNS records as instructed
 
 ### Update CORS After Adding Custom Domains
 Remember to update `CORS_ORIGINS` to include custom domains:
 ```
-CORS_ORIGINS=https://admin.femmelux.com,https://femmelux.com
+https://admin.femmelux.com,https://femmelux.com
 ```
 
 ---
 
 ## Environment Variables Reference
 
-### Backend (Railway)
+### Backend (Render)
 
 | Variable | Description | Example |
 |----------|-------------|---------|
 | `NODE_ENV` | Environment mode | `production` |
 | `PORT` | Server port | `4000` |
-| `DATABASE_URL` | PostgreSQL connection | `${{Postgres.DATABASE_URL}}` |
+| `DATABASE_URL` | PostgreSQL connection | Internal Render URL |
 | `JWT_ACCESS_SECRET` | Access token signing key | 64-char random string |
 | `JWT_REFRESH_SECRET` | Refresh token signing key | 64-char random string |
 | `JWT_ACCESS_EXPIRES_IN` | Access token expiry | `15m` |
@@ -206,32 +218,53 @@ CORS_ORIGINS=https://admin.femmelux.com,https://femmelux.com
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `NEXT_PUBLIC_API_URL` | Backend API URL with /api | `https://api.railway.app/api` |
+| `NEXT_PUBLIC_API_URL` | Backend API URL with /api | `https://femmelux-backend.onrender.com/api` |
 | `NEXT_PUBLIC_SITE_NAME` | Site display name | `FemmeLux Admin` |
 
 ### Web Storefront (Vercel)
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `NEXT_PUBLIC_API_URL` | Backend API URL with /api | `https://api.railway.app/api` |
+| `NEXT_PUBLIC_API_URL` | Backend API URL with /api | `https://femmelux-backend.onrender.com/api` |
 | `NEXT_PUBLIC_SITE_NAME` | Site display name | `FemmeLux Beauty` |
+
+---
+
+## Important Notes about Render Free Tier
+
+### Cold Starts
+- Free tier services spin down after 15 minutes of inactivity
+- First request after spin-down takes 30-60 seconds
+- Subsequent requests are fast
+
+### To Keep Service Active (Optional)
+Use a free monitoring service to ping your API every 14 minutes:
+- UptimeRobot (free): https://uptimerobot.com
+- Cron-job.org (free): https://cron-job.org
+
+Set up a monitor to ping: `https://femmelux-backend.onrender.com/api/health`
+
+### Upgrading to Paid
+If cold starts are an issue:
+- Render Starter: $7/month (always on)
+- PostgreSQL Starter: $7/month
 
 ---
 
 ## Troubleshooting
 
 ### API Not Responding
-1. Check Railway deployment logs
-2. Verify DATABASE_URL is correctly set (should reference Postgres service)
-3. Ensure Prisma migrations ran successfully
-4. Check if PORT is set to 4000
+1. Check Render dashboard for deployment status
+2. View logs in Render → Events/Logs tab
+3. Verify DATABASE_URL is correctly set
+4. Check if free tier has spun down (wait 30-60 sec)
 
 ### CORS Errors
-1. Open browser DevTools > Network tab
+1. Open browser DevTools → Network tab
 2. Verify the error shows your frontend domain
 3. Ensure CORS_ORIGINS includes the exact domain (with https://)
 4. No trailing slashes in URLs
-5. Redeploy backend after updating CORS_ORIGINS
+5. Wait for Render to redeploy after changing env vars
 
 ### Build Failures on Vercel
 1. Check that Root Directory is set correctly (`admin` or `web`)
@@ -240,9 +273,9 @@ CORS_ORIGINS=https://admin.femmelux.com,https://femmelux.com
 4. Ensure NEXT_PUBLIC_API_URL is set
 
 ### Database Connection Issues
-1. Verify DATABASE_URL references `${{Postgres.DATABASE_URL}}`
-2. Check Railway PostgreSQL service is running
-3. Try re-linking the database variable
+1. Use **Internal Database URL** (not External)
+2. Make sure database and backend are in same region
+3. Check database is not paused (free tier pauses after 90 days of inactivity)
 
 ### 401 Unauthorized on Admin
 1. Check if JWT secrets are set correctly
@@ -253,22 +286,16 @@ CORS_ORIGINS=https://admin.femmelux.com,https://femmelux.com
 
 ## Useful Commands
 
-### Railway CLI (optional)
+### Render CLI (optional)
 ```bash
 # Install
-npm i -g @railway/cli
+npm i -g render-cli
 
 # Login
-railway login
+render login
 
-# Link to project
-railway link
-
-# View logs
-railway logs
-
-# Open shell
-railway shell
+# List services
+render services list
 ```
 
 ### Vercel CLI (optional)
@@ -293,7 +320,7 @@ vercel logs
 - [ ] Use strong, unique JWT secrets (64+ characters)
 - [ ] HTTPS enabled (automatic on both platforms)
 - [ ] Set restrictive CORS origins (no wildcards)
-- [ ] Database uses SSL (automatic on Railway)
-- [ ] Enable 2FA on Vercel and Railway accounts
+- [ ] Database uses SSL (automatic on Render)
+- [ ] Enable 2FA on Vercel and Render accounts
 - [ ] Regularly rotate JWT secrets
 - [ ] Monitor for unusual activity in logs
