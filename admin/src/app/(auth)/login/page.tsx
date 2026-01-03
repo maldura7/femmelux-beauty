@@ -46,7 +46,7 @@ export default function LoginPage() {
       });
 
       toast.success('Welcome back!');
-      router.push('/');
+      window.location.href = getPath('/dashboard');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Login failed');
     } finally {
