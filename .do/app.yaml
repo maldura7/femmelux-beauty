@@ -87,13 +87,16 @@ services:
     envs:
       - key: NODE_ENV
         value: production
+      # API URL - use relative path since admin and API are on same domain
+      # The frontend code detects production and uses /api automatically
       - key: NEXT_PUBLIC_API_URL
-        scope: RUN_TIME
-        value: ${backend.PUBLIC_URL}/api
+        scope: BUILD_TIME
+        value: "/api"
       - key: NEXT_PUBLIC_SITE_URL
-        scope: RUN_TIME
-        value: ${admin.PUBLIC_URL}
+        scope: BUILD_TIME
+        value: "/admin"
       - key: NEXT_PUBLIC_SITE_NAME
+        scope: BUILD_TIME
         value: "FemmeLux Admin"
 
   # Web Storefront (Next.js)
@@ -112,11 +115,14 @@ services:
     envs:
       - key: NODE_ENV
         value: production
+      # API URL - use relative path since web and API are on same domain
+      # The frontend code detects production and uses /api automatically
       - key: NEXT_PUBLIC_API_URL
-        scope: RUN_TIME
-        value: ${backend.PUBLIC_URL}/api
+        scope: BUILD_TIME
+        value: "/api"
       - key: NEXT_PUBLIC_SITE_URL
-        scope: RUN_TIME
-        value: ${web.PUBLIC_URL}
+        scope: BUILD_TIME
+        value: "/"
       - key: NEXT_PUBLIC_SITE_NAME
+        scope: BUILD_TIME
         value: "FemmeLux Beauty"
