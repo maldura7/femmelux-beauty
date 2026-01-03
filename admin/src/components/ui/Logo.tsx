@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
 interface LogoProps {
@@ -67,9 +66,9 @@ export function Logo({
 
   if (href) {
     return (
-      <Link href={href} className="inline-flex">
+      <a href={href} className="inline-flex">
         {logoContent}
-      </Link>
+      </a>
     );
   }
 

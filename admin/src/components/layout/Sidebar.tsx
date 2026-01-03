@@ -1,7 +1,6 @@
 'use client';
 
 import { Fragment } from 'react';
-import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Dialog, Transition } from '@headlessui/react';
 import {
@@ -22,6 +21,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { Logo } from '@/components/ui';
+import { getPath, getBasePath } from '@/lib/navigation';
 
 export interface NavigationItem {
   name: string;
@@ -51,17 +51,31 @@ interface SidebarContentProps {
 function SidebarContent({ onClose }: SidebarContentProps) {
   const pathname = usePathname();
   const { user, logout, isLoggingOut } = useAuth();
+  const basePath = getBasePath();
 
   const handleLogout = () => {
     logout();
     onClose?.();
   };
 
+  // Check if path is active - need to account for base path in pathname
+  const isPathActive = (href: string) => {
+    // Remove base path from pathname for comparison
+    const normalizedPathname = pathname.startsWith(basePath)
+      ? pathname.slice(basePath.length) || '/'
+      : pathname;
+
+    return (
+      normalizedPathname === href ||
+      (href !== '/dashboard' && normalizedPathname.startsWith(`${href}/`))
+    );
+  };
+
   return (
     <div className="flex h-full flex-col bg-secondary-800">
       {/* Logo */}
       <div className="flex h-16 items-center justify-between px-6 border-b border-secondary-700">
-        <Logo size="sm" variant="white" href="/dashboard" />
+        <Logo size="sm" variant="white" href={getPath('/dashboard')} />
         {onClose && (
           <button
             type="button"
@@ -76,14 +90,12 @@ function SidebarContent({ onClose }: SidebarContentProps) {
       {/* Navigation */}
       <nav className="flex-1 space-y-1 px-3 py-4 overflow-y-auto">
         {navigation.map((item) => {
-          const isActive =
-            pathname === item.href ||
-            (item.href !== '/dashboard' && pathname.startsWith(`${item.href}/`));
+          const isActive = isPathActive(item.href);
 
           return (
-            <Link
+            <a
               key={item.name}
-              href={item.href}
+              href={getPath(item.href)}
               onClick={onClose}
               className={cn(
                 'flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-colors duration-200',
@@ -99,7 +111,7 @@ function SidebarContent({ onClose }: SidebarContentProps) {
                   {item.badge > 99 ? '99+' : item.badge}
                 </span>
               )}
-            </Link>
+            </a>
           );
         })}
       </nav>
