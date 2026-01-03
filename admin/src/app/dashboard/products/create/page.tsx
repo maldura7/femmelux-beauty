@@ -1,13 +1,13 @@
 'use client';
 
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { Button } from '@/components/ui';
 import { ProductForm, ProductFormData } from '@/components/products/ProductForm';
 import { createProduct } from '@/lib/api/products.api';
+import { getPath } from '@/lib/navigation';
 import toast from 'react-hot-toast';
-import Link from 'next/link';
 
 // Helper function to convert File to base64 data URL
 const fileToBase64 = (file: File): Promise<string> => {
@@ -20,7 +20,6 @@ const fileToBase64 = (file: File): Promise<string> => {
 };
 
 export default function CreateProductPage() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
 
@@ -58,9 +57,9 @@ export default function CreateProductPage() {
 
       // Redirect back to brand products if came from there
       if (brandIdFromUrl) {
-        router.push(`/dashboard/brands/${brandIdFromUrl}/products`);
+        window.location.href = getPath(`/dashboard/brands/${brandIdFromUrl}/products`);
       } else {
-        router.push('/dashboard/products');
+        window.location.href = getPath('/dashboard/products');
       }
     },
     onError: (error: Error) => {
@@ -74,9 +73,9 @@ export default function CreateProductPage() {
 
   const handleCancel = () => {
     if (brandIdFromUrl) {
-      router.push(`/dashboard/brands/${brandIdFromUrl}/products`);
+      window.location.href = getPath(`/dashboard/brands/${brandIdFromUrl}/products`);
     } else {
-      router.push('/dashboard/products');
+      window.location.href = getPath('/dashboard/products');
     }
   };
 
@@ -84,11 +83,11 @@ export default function CreateProductPage() {
     <div className="space-y-6">
       {/* Page header */}
       <div className="flex items-center gap-4">
-        <Link href={brandIdFromUrl ? `/dashboard/brands/${brandIdFromUrl}/products` : '/dashboard/products'}>
+        <a href={getPath(brandIdFromUrl ? `/dashboard/brands/${brandIdFromUrl}/products` : '/dashboard/products')}>
           <Button variant="ghost" size="sm">
             <ArrowLeftIcon className="h-5 w-5" />
           </Button>
-        </Link>
+        </a>
         <div>
           <h1 className="text-2xl font-bold text-secondary-800">Create Product</h1>
           <p className="text-gray-600">Add a new product to your catalog</p>

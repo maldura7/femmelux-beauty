@@ -1,16 +1,14 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { Button } from '@/components/ui';
 import { BrandForm, BrandFormData } from '@/components/brands/BrandForm';
 import { createBrand } from '@/lib/api/brands.api';
+import { getPath } from '@/lib/navigation';
 import toast from 'react-hot-toast';
-import Link from 'next/link';
 
 export default function CreateBrandPage() {
-  const router = useRouter();
   const queryClient = useQueryClient();
 
   const createMutation = useMutation({
@@ -18,7 +16,7 @@ export default function CreateBrandPage() {
     onSuccess: () => {
       toast.success('Brand created successfully');
       queryClient.invalidateQueries({ queryKey: ['brands'] });
-      router.push('/dashboard/brands');
+      window.location.href = getPath('/dashboard/brands');
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to create brand');
@@ -30,18 +28,18 @@ export default function CreateBrandPage() {
   };
 
   const handleCancel = () => {
-    router.push('/dashboard/brands');
+    window.location.href = getPath('/dashboard/brands');
   };
 
   return (
     <div className="space-y-6">
       {/* Page header */}
       <div className="flex items-center gap-4">
-        <Link href="/dashboard/brands">
+        <a href={getPath('/dashboard/brands')}>
           <Button variant="ghost" size="sm">
             <ArrowLeftIcon className="h-5 w-5" />
           </Button>
-        </Link>
+        </a>
         <div>
           <h1 className="text-2xl font-bold text-secondary-800">Create Brand</h1>
           <p className="text-gray-600">Add a new brand partner to your store</p>

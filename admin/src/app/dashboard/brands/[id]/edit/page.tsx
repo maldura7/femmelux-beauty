@@ -1,16 +1,15 @@
 'use client';
 
-import { useRouter, useParams } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { Button, Spinner } from '@/components/ui';
 import { BrandForm, BrandFormData } from '@/components/brands/BrandForm';
 import { getBrand, updateBrand } from '@/lib/api/brands.api';
+import { getPath } from '@/lib/navigation';
 import toast from 'react-hot-toast';
-import Link from 'next/link';
 
 export default function EditBrandPage() {
-  const router = useRouter();
   const params = useParams();
   const queryClient = useQueryClient();
   const brandId = params.id as string;
@@ -29,7 +28,7 @@ export default function EditBrandPage() {
       toast.success('Brand updated successfully');
       queryClient.invalidateQueries({ queryKey: ['brands'] });
       queryClient.invalidateQueries({ queryKey: ['brand', brandId] });
-      router.push('/dashboard/brands');
+      window.location.href = getPath('/dashboard/brands');
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to update brand');
@@ -41,7 +40,7 @@ export default function EditBrandPage() {
   };
 
   const handleCancel = () => {
-    router.push('/dashboard/brands');
+    window.location.href = getPath('/dashboard/brands');
   };
 
   if (isLoading) {
@@ -56,9 +55,9 @@ export default function EditBrandPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
         <p className="text-error-500">Failed to load brand</p>
-        <Link href="/dashboard/brands">
+        <a href={getPath('/dashboard/brands')}>
           <Button>Back to Brands</Button>
-        </Link>
+        </a>
       </div>
     );
   }
@@ -67,11 +66,11 @@ export default function EditBrandPage() {
     <div className="space-y-6">
       {/* Page header */}
       <div className="flex items-center gap-4">
-        <Link href="/dashboard/brands">
+        <a href={getPath('/dashboard/brands')}>
           <Button variant="ghost" size="sm">
             <ArrowLeftIcon className="h-5 w-5" />
           </Button>
-        </Link>
+        </a>
         <div>
           <h1 className="text-2xl font-bold text-secondary-800">Edit Brand</h1>
           <p className="text-gray-600">Update brand information for {brand.name}</p>

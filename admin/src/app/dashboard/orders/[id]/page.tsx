@@ -1,9 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import Image from 'next/image';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeftIcon,
@@ -23,6 +22,7 @@ import { UpdatePaymentStatusDialog } from '@/components/orders/UpdatePaymentStat
 import { getOrder, updateOrderStatus, updatePaymentStatus } from '@/lib/api/orders.api';
 import type { PaymentStatus } from '@/types';
 import { formatCurrency, formatDateTime, resolveImageUrl } from '@/lib/utils';
+import { getPath } from '@/lib/navigation';
 import type { Order, OrderItem } from '@/types';
 import toast from 'react-hot-toast';
 
@@ -77,7 +77,6 @@ function groupItemsByBrand(items: OrderItem[]): BrandGroup[] {
 
 export default function OrderDetailsPage() {
   const params = useParams();
-  const router = useRouter();
   const queryClient = useQueryClient();
   const orderId = params.id as string;
 
@@ -150,9 +149,9 @@ export default function OrderDetailsPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
         <p className="text-error-500">Failed to load order</p>
-        <Link href="/dashboard/orders">
+        <a href={getPath('/dashboard/orders')}>
           <Button>Back to Orders</Button>
-        </Link>
+        </a>
       </div>
     );
   }
@@ -164,11 +163,11 @@ export default function OrderDetailsPage() {
       {/* Page header */}
       <div className="flex items-center justify-between print:hidden">
         <div className="flex items-center gap-4">
-          <Link href="/dashboard/orders">
+          <a href={getPath('/dashboard/orders')}>
             <Button variant="ghost" size="sm">
               <ArrowLeftIcon className="h-5 w-5" />
             </Button>
-          </Link>
+          </a>
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold text-secondary-800">
@@ -414,12 +413,12 @@ export default function OrderDetailsPage() {
                   </div>
                 )}
                 <div className="pt-2 border-t border-gray-100">
-                  <Link
-                    href={`/dashboard/users/${order.userId}`}
+                  <a
+                    href={getPath(`/dashboard/users/${order.userId}`)}
                     className="text-sm text-primary-600 hover:text-primary-700"
                   >
                     View Customer Profile →
-                  </Link>
+                  </a>
                 </div>
               </div>
             </CardBody>

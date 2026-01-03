@@ -1,8 +1,6 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import {
   EyeIcon,
@@ -17,6 +15,7 @@ import { OrderStatusBadge, OrderStatus } from '@/components/orders/OrderStatusBa
 import { getAllOrders } from '@/lib/api/orders.api';
 import { getAllBrands } from '@/lib/api/brands.api';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
+import { getPath } from '@/lib/navigation';
 import type { Order, Brand } from '@/types';
 
 const ITEMS_PER_PAGE = 10;
@@ -80,8 +79,6 @@ const getOrderUser = (order: Order) => {
 };
 
 export default function OrdersPage() {
-  const router = useRouter();
-
   const [filters, setFilters] = useState<OrderFiltersState>({
     search: '',
     status: '',
@@ -253,12 +250,12 @@ export default function OrdersPage() {
                 orders.map((order) => (
                   <tr key={order.id} className="hover:bg-gray-50">
                     <td>
-                      <Link
-                        href={`/dashboard/orders/${order.id}`}
+                      <a
+                        href={getPath(`/dashboard/orders/${order.id}`)}
                         className="font-medium font-mono text-primary-600 hover:text-primary-700 hover:underline"
                       >
                         {order.orderNumber || order.id.slice(0, 8).toUpperCase()}
-                      </Link>
+                      </a>
                     </td>
                     <td>
                       <div>
@@ -283,14 +280,12 @@ export default function OrdersPage() {
                     </td>
                     <td>
                       <div className="flex items-center justify-end">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => router.push(`/dashboard/orders/${order.id}`)}
-                        >
-                          <EyeIcon className="h-4 w-4 mr-1" />
-                          View
-                        </Button>
+                        <a href={getPath(`/dashboard/orders/${order.id}`)}>
+                          <Button variant="ghost" size="sm">
+                            <EyeIcon className="h-4 w-4 mr-1" />
+                            View
+                          </Button>
+                        </a>
                       </div>
                     </td>
                   </tr>

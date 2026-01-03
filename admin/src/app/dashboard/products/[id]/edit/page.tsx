@@ -1,13 +1,13 @@
 'use client';
 
-import { useRouter, useParams } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { Button, Spinner } from '@/components/ui';
 import { ProductForm, ProductFormData } from '@/components/products/ProductForm';
 import { getProduct, updateProduct } from '@/lib/api/products.api';
+import { getPath } from '@/lib/navigation';
 import toast from 'react-hot-toast';
-import Link from 'next/link';
 
 // Helper function to convert File to base64 data URL
 const fileToBase64 = (file: File): Promise<string> => {
@@ -20,7 +20,6 @@ const fileToBase64 = (file: File): Promise<string> => {
 };
 
 export default function EditProductPage() {
-  const router = useRouter();
   const params = useParams();
   const queryClient = useQueryClient();
   const productId = params.id as string;
@@ -63,7 +62,7 @@ export default function EditProductPage() {
       toast.success('Product updated successfully');
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['product', productId] });
-      router.push('/dashboard/products');
+      window.location.href = getPath('/dashboard/products');
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to update product');
@@ -75,7 +74,7 @@ export default function EditProductPage() {
   };
 
   const handleCancel = () => {
-    router.push('/dashboard/products');
+    window.location.href = getPath('/dashboard/products');
   };
 
   if (isLoading) {
@@ -90,9 +89,9 @@ export default function EditProductPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
         <p className="text-error-500">Failed to load product</p>
-        <Link href="/dashboard/products">
+        <a href={getPath('/dashboard/products')}>
           <Button>Back to Products</Button>
-        </Link>
+        </a>
       </div>
     );
   }
@@ -101,11 +100,11 @@ export default function EditProductPage() {
     <div className="space-y-6">
       {/* Page header */}
       <div className="flex items-center gap-4">
-        <Link href="/dashboard/products">
+        <a href={getPath('/dashboard/products')}>
           <Button variant="ghost" size="sm">
             <ArrowLeftIcon className="h-5 w-5" />
           </Button>
-        </Link>
+        </a>
         <div>
           <h1 className="text-2xl font-bold text-secondary-800">Edit Product</h1>
           <p className="text-gray-600">Update information for {product.name}</p>

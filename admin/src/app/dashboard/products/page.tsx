@@ -1,9 +1,8 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import Link from 'next/link';
 import Image from 'next/image';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   PlusIcon,
@@ -19,13 +18,13 @@ import { DeleteProductDialog } from '@/components/products/DeleteProductDialog';
 import { getAllProducts, deleteProduct } from '@/lib/api/products.api';
 import { getAllBrands } from '@/lib/api/brands.api';
 import { formatCurrency, resolveImageUrl } from '@/lib/utils';
+import { getPath } from '@/lib/navigation';
 import type { Product, Brand } from '@/types';
 import toast from 'react-hot-toast';
 
 const ITEMS_PER_PAGE = 10;
 
 export default function ProductsPage() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
 
@@ -135,12 +134,12 @@ export default function ProductsPage() {
           <h1 className="text-2xl font-bold text-secondary-800">Products</h1>
           <p className="text-gray-600">Manage your product catalog</p>
         </div>
-        <Link href="/dashboard/products/create">
+        <a href={getPath('/dashboard/products/create')}>
           <Button>
             <PlusIcon className="h-5 w-5 mr-2" />
             Add Product
           </Button>
-        </Link>
+        </a>
       </div>
 
       {/* Stats cards */}
@@ -236,12 +235,12 @@ export default function ProductsPage() {
                           : 'No products yet. Create your first product!'}
                       </p>
                       {!filters.search && !filters.brandId && !filters.category && !filters.status && (
-                        <Link href="/dashboard/products/create">
+                        <a href={getPath('/dashboard/products/create')}>
                           <Button size="sm">
                             <PlusIcon className="h-4 w-4 mr-1" />
                             Add Product
                           </Button>
-                        </Link>
+                        </a>
                       )}
                     </div>
                   </td>
@@ -280,12 +279,12 @@ export default function ProductsPage() {
                       <td className="text-gray-500 font-mono text-sm">{product.sku}</td>
                       <td>
                         {product.brand ? (
-                          <Link
-                            href={`/dashboard/brands/${product.brandId}/products`}
+                          <a
+                            href={getPath(`/dashboard/brands/${product.brandId}/products`)}
                             className="text-primary-600 hover:text-primary-700 hover:underline"
                           >
                             {product.brand.name}
-                          </Link>
+                          </a>
                         ) : (
                           <span className="text-gray-400">—</span>
                         )}
@@ -310,14 +309,15 @@ export default function ProductsPage() {
                       </td>
                       <td>
                         <div className="flex items-center justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => router.push(`/dashboard/products/${product.id}/edit`)}
-                            title="Edit Product"
-                          >
-                            <PencilIcon className="h-4 w-4" />
-                          </Button>
+                          <a href={getPath(`/dashboard/products/${product.id}/edit`)}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              title="Edit Product"
+                            >
+                              <PencilIcon className="h-4 w-4" />
+                            </Button>
+                          </a>
                           <Button
                             variant="ghost"
                             size="sm"

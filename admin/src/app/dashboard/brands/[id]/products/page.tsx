@@ -1,9 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Image from 'next/image';
-import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import {
   ArrowLeftIcon,
@@ -16,10 +15,10 @@ import {
 import { Card, CardBody, Button, Badge, Spinner } from '@/components/ui';
 import { getBrand, getBrandProducts } from '@/lib/api/brands.api';
 import { resolveImageUrl } from '@/lib/utils';
+import { getPath } from '@/lib/navigation';
 import type { Product } from '@/types';
 
 export default function BrandProductsPage() {
-  const router = useRouter();
   const params = useParams();
   const brandId = params.id as string;
   const [searchQuery, setSearchQuery] = useState('');
@@ -61,9 +60,9 @@ export default function BrandProductsPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
         <p className="text-error-500">Brand not found</p>
-        <Link href="/dashboard/brands">
+        <a href={getPath('/dashboard/brands')}>
           <Button>Back to Brands</Button>
-        </Link>
+        </a>
       </div>
     );
   }
@@ -73,11 +72,11 @@ export default function BrandProductsPage() {
       {/* Page header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Link href="/dashboard/brands">
+          <a href={getPath('/dashboard/brands')}>
             <Button variant="ghost" size="sm">
               <ArrowLeftIcon className="h-5 w-5" />
             </Button>
-          </Link>
+          </a>
           <div className="flex items-center gap-4">
             {brand.logo ? (
               <div className="relative h-12 w-12 rounded-lg overflow-hidden bg-gray-100 border border-gray-200">
@@ -103,12 +102,12 @@ export default function BrandProductsPage() {
             </div>
           </div>
         </div>
-        <Link href={`/dashboard/products/create?brandId=${brandId}`}>
+        <a href={getPath(`/dashboard/products/create?brandId=${brandId}`)}>
           <Button>
             <PlusIcon className="h-5 w-5 mr-2" />
             Add Product
           </Button>
-        </Link>
+        </a>
       </div>
 
       {/* Brand info card */}
@@ -134,12 +133,12 @@ export default function BrandProductsPage() {
               </div>
             )}
             <div className="ml-auto">
-              <Link href={`/dashboard/brands/${brandId}/edit`}>
+              <a href={getPath(`/dashboard/brands/${brandId}/edit`)}>
                 <Button variant="outline" size="sm">
                   <PencilIcon className="h-4 w-4 mr-2" />
                   Edit Brand
                 </Button>
-              </Link>
+              </a>
             </div>
           </div>
         </CardBody>
@@ -179,12 +178,12 @@ export default function BrandProductsPage() {
                 : 'Add your first product to this brand.'}
             </p>
             {!searchQuery && (
-              <Link href={`/dashboard/products/create?brandId=${brandId}`}>
+              <a href={getPath(`/dashboard/products/create?brandId=${brandId}`)}>
                 <Button>
                   <PlusIcon className="h-5 w-5 mr-2" />
                   Add Product
                 </Button>
-              </Link>
+              </a>
             )}
           </CardBody>
         </Card>
@@ -233,24 +232,18 @@ export default function BrandProductsPage() {
                   </div>
                 </div>
                 <div className="flex gap-2 pt-2 border-t border-gray-100">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => router.push(`/dashboard/products/${product.id}`)}
-                  >
-                    <EyeIcon className="h-4 w-4 mr-1" />
-                    View
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => router.push(`/dashboard/products/${product.id}/edit`)}
-                  >
-                    <PencilIcon className="h-4 w-4 mr-1" />
-                    Edit
-                  </Button>
+                  <a href={getPath(`/dashboard/products/${product.id}`)} className="flex-1">
+                    <Button variant="outline" size="sm" className="w-full">
+                      <EyeIcon className="h-4 w-4 mr-1" />
+                      View
+                    </Button>
+                  </a>
+                  <a href={getPath(`/dashboard/products/${product.id}/edit`)} className="flex-1">
+                    <Button variant="outline" size="sm" className="w-full">
+                      <PencilIcon className="h-4 w-4 mr-1" />
+                      Edit
+                    </Button>
+                  </a>
                 </div>
               </CardBody>
             </Card>

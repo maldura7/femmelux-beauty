@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { useParams } from 'next/navigation';
+import { getPath } from '@/lib/navigation';
 import {
   ArrowLeftIcon,
   EnvelopeIcon,
@@ -134,7 +134,6 @@ FemmeLux Beauty Team`,
 
 export default function MessageDetailPage() {
   const params = useParams();
-  const router = useRouter();
   const messageId = params.id as string;
 
   const [message, setMessage] = useState<Message | null>(null);
@@ -164,7 +163,7 @@ export default function MessageDetailPage() {
         setMessage(data.data);
       } else {
         toast.error('Message not found');
-        router.push('/dashboard/messages');
+        window.location.href = getPath('/dashboard/messages');
       }
     } catch (error) {
       console.error('Error fetching message:', error);
@@ -172,7 +171,7 @@ export default function MessageDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [messageId, router]);
+  }, [messageId]);
 
   useEffect(() => {
     fetchMessage();
@@ -276,7 +275,7 @@ export default function MessageDetailPage() {
 
       if (data.success) {
         toast.success('Message deleted');
-        router.push('/dashboard/messages');
+        window.location.href = getPath('/dashboard/messages');
       } else {
         throw new Error(data.message);
       }
@@ -318,13 +317,13 @@ export default function MessageDetailPage() {
     return (
       <div className="text-center py-12">
         <p className="text-gray-500">Message not found</p>
-        <Link
-          href="/dashboard/messages"
+        <a
+          href={getPath('/dashboard/messages')}
           className="mt-4 inline-flex items-center gap-2 text-primary-600 hover:text-primary-700"
         >
           <ArrowLeftIcon className="w-4 h-4" />
           Back to Messages
-        </Link>
+        </a>
       </div>
     );
   }
@@ -334,12 +333,12 @@ export default function MessageDetailPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-4">
-          <Link
-            href="/dashboard/messages"
+          <a
+            href={getPath('/dashboard/messages')}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <ArrowLeftIcon className="w-5 h-5 text-gray-500" />
-          </Link>
+          </a>
           <div>
             <h1 className="text-xl font-bold text-gray-900">Message from {message.name}</h1>
             <p className="text-sm text-gray-500">
@@ -555,12 +554,12 @@ export default function MessageDetailPage() {
                   </div>
                   <div>
                     <p className="text-xs text-gray-500">Order Number</p>
-                    <Link
-                      href={`/dashboard/orders?search=${message.orderNumber}`}
+                    <a
+                      href={getPath(`/dashboard/orders?search=${message.orderNumber}`)}
                       className="text-sm font-medium text-primary-600 hover:text-primary-700"
                     >
                       {message.orderNumber}
-                    </Link>
+                    </a>
                   </div>
                 </div>
               )}
@@ -624,13 +623,13 @@ export default function MessageDetailPage() {
                 </a>
               )}
               {message.orderNumber && (
-                <Link
-                  href={`/dashboard/orders?search=${message.orderNumber}`}
+                <a
+                  href={getPath(`/dashboard/orders?search=${message.orderNumber}`)}
                   className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
                 >
                   <ShoppingBagIcon className="w-4 h-4" />
                   View Order
-                </Link>
+                </a>
               )}
             </div>
           </div>

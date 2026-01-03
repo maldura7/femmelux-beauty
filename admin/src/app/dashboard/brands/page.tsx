@@ -1,9 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   PlusIcon,
@@ -17,11 +15,11 @@ import { Card, CardBody, Button, Badge, Spinner } from '@/components/ui';
 import { DeleteBrandDialog } from '@/components/brands/DeleteBrandDialog';
 import { getAllBrands, deleteBrand } from '@/lib/api/brands.api';
 import { resolveImageUrl } from '@/lib/utils';
+import { getPath } from '@/lib/navigation';
 import type { Brand } from '@/types';
 import toast from 'react-hot-toast';
 
 export default function BrandsPage() {
-  const router = useRouter();
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -93,12 +91,12 @@ export default function BrandsPage() {
           <h1 className="text-2xl font-bold text-secondary-800">Brands</h1>
           <p className="text-gray-600">Manage your brand partners</p>
         </div>
-        <Link href="/dashboard/brands/create">
+        <a href={getPath('/dashboard/brands/create')}>
           <Button>
             <PlusIcon className="h-5 w-5 mr-2" />
             Add Brand
           </Button>
-        </Link>
+        </a>
       </div>
 
       {/* Stats cards */}
@@ -208,12 +206,12 @@ export default function BrandsPage() {
                     <td className="text-gray-500">{brand.slug}</td>
                     <td>${Number(brand.minimumOrder || 0).toFixed(2)}</td>
                     <td>
-                      <Link
-                        href={`/dashboard/brands/${brand.id}/products`}
+                      <a
+                        href={getPath(`/dashboard/brands/${brand.id}/products`)}
                         className="text-primary-600 hover:text-primary-700 hover:underline"
                       >
                         {brand._count?.products || 0} products
-                      </Link>
+                      </a>
                     </td>
                     <td>
                       <Badge variant={brand.status ? 'success' : 'error'}>
@@ -222,22 +220,24 @@ export default function BrandsPage() {
                     </td>
                     <td>
                       <div className="flex items-center justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => router.push(`/dashboard/brands/${brand.id}/products`)}
-                          title="View Products"
-                        >
-                          <EyeIcon className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => router.push(`/dashboard/brands/${brand.id}/edit`)}
-                          title="Edit Brand"
-                        >
-                          <PencilIcon className="h-4 w-4" />
-                        </Button>
+                        <a href={getPath(`/dashboard/brands/${brand.id}/products`)}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            title="View Products"
+                          >
+                            <EyeIcon className="h-4 w-4" />
+                          </Button>
+                        </a>
+                        <a href={getPath(`/dashboard/brands/${brand.id}/edit`)}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            title="Edit Brand"
+                          >
+                            <PencilIcon className="h-4 w-4" />
+                          </Button>
+                        </a>
                         <Button
                           variant="ghost"
                           size="sm"

@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, Suspense } from 'react';
-import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import { Button, Input } from '@/components/ui';
 import { resetPassword } from '@/lib/api';
+import { getPath } from '@/lib/navigation';
 
 interface ResetPasswordFormData {
   password: string;
@@ -14,7 +14,6 @@ interface ResetPasswordFormData {
 }
 
 function ResetPasswordForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
 
@@ -71,11 +70,11 @@ function ResetPasswordForm() {
         <p className="mt-2 text-gray-600">
           This password reset link is invalid or has expired.
         </p>
-        <Link href="/forgot-password">
+        <a href={getPath('/forgot-password')}>
           <Button className="mt-6" variant="primary">
             Request new reset link
           </Button>
-        </Link>
+        </a>
       </div>
     );
   }
@@ -102,7 +101,7 @@ function ResetPasswordForm() {
         <p className="mt-2 text-gray-600">
           Your password has been successfully reset.
         </p>
-        <Button className="mt-6" onClick={() => router.push('/login')}>
+        <Button className="mt-6" onClick={() => window.location.href = getPath('/login')}>
           Sign in with new password
         </Button>
       </div>
@@ -215,8 +214,8 @@ export default function ResetPasswordPage() {
           </Suspense>
 
           <p className="mt-8 text-center">
-            <Link
-              href="/login"
+            <a
+              href={getPath('/login')}
               className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -228,7 +227,7 @@ export default function ResetPasswordPage() {
                 />
               </svg>
               Back to sign in
-            </Link>
+            </a>
           </p>
         </div>
       </div>
