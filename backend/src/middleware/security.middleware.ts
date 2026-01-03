@@ -12,7 +12,7 @@ import sanitizeHtml from 'sanitize-html';
  */
 export const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === 'production' ? 100 : 1000, // More lenient in development
+  max: process.env.NODE_ENV === 'production' ? 500 : 1000, // 500 requests per 15 min in production
   message: {
     success: false,
     message: 'Too many requests, please try again later.',
@@ -24,6 +24,8 @@ export const generalLimiter = rateLimit({
     // Skip rate limiting for health checks
     return req.path === '/health' || req.path === '/api/health';
   },
+  // Trust proxy - needed when behind Cloudflare/Render
+  validate: { xForwardedForHeader: false },
 });
 
 /**
