@@ -276,8 +276,21 @@ export function sleep(ms: number): Promise<void> {
 
 /**
  * Get the API base URL (without /api suffix)
+ * Uses hostname detection for production
  */
-const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api').replace(/\/api$/, '');
+function getApiBaseUrl(): string {
+  // In browser, check if we're on production
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+      // In production, images are served from the same domain
+      return '';
+    }
+  }
+
+  // Fall back to env variable or localhost
+  return (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api').replace(/\/api$/, '');
+}
 
 /**
  * Resolve image URL to full URL
@@ -291,14 +304,16 @@ export function resolveImageUrl(url: string | null | undefined): string | null {
     return url;
   }
 
+  const baseUrl = getApiBaseUrl();
+
   // Relative path starting with /uploads - prefix with API server URL
   if (url.startsWith('/uploads')) {
-    return `${API_BASE_URL}${url}`;
+    return baseUrl ? `${baseUrl}${url}` : url;
   }
 
   // Other relative paths
   if (url.startsWith('/')) {
-    return `${API_BASE_URL}${url}`;
+    return baseUrl ? `${baseUrl}${url}` : url;
   }
 
   return url;

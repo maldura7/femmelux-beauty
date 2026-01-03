@@ -4,11 +4,33 @@ import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'ax
 // API CLIENT CONFIGURATION
 // ============================================
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+/**
+ * Get the API URL dynamically based on hostname
+ * In production (non-localhost), use relative /api path
+ * This works because DigitalOcean routes /api/* to the backend
+ */
+function getApiUrl(): string {
+  // In browser, check if we're on production (not localhost)
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+      // In production, use relative path - DigitalOcean routes /api to backend
+      return '/api';
+    }
+  }
 
-// Create axios instance
+  // Fall back to env variable or localhost
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    const url = process.env.NEXT_PUBLIC_API_URL;
+    return url.endsWith('/api') ? url : `${url}/api`;
+  }
+
+  return 'http://localhost:4000/api';
+}
+
+// Create axios instance with initial baseURL
 const api: AxiosInstance = axios.create({
-  baseURL: `${API_URL}/api`,
+  baseURL: getApiUrl(),
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
@@ -22,8 +44,11 @@ const api: AxiosInstance = axios.create({
 
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    // Get token from localStorage (client-side only)
+    // Dynamically set baseURL at runtime (handles SSR to client transition)
     if (typeof window !== 'undefined') {
+      config.baseURL = getApiUrl();
+
+      // Get token from localStorage (client-side only)
       const token = localStorage.getItem('accessToken');
       if (token && config.headers) {
         config.headers.Authorization = `Bearer ${token}`;
@@ -86,7 +111,7 @@ api.interceptors.response.use(
         // Try to refresh the token
         const refreshToken = localStorage.getItem('refreshToken');
         if (refreshToken) {
-          const response = await axios.post(`${API_URL}/api/auth/refresh-token`, {
+          const response = await axios.post(`${getApiUrl()}/auth/refresh-token`, {
             refreshToken,
           });
 
