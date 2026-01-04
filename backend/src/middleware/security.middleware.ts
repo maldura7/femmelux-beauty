@@ -8,11 +8,11 @@ import sanitizeHtml from 'sanitize-html';
 
 /**
  * General API rate limiter
- * Limits: 1000 requests per 15 minutes per IP in development, 100 in production
+ * Limits: 5000 requests per 15 minutes per IP in production (high for bulk imports)
  */
 export const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === 'production' ? 500 : 1000, // 500 requests per 15 min in production
+  max: process.env.NODE_ENV === 'production' ? 5000 : 10000, // Very high limit for bulk operations
   message: {
     success: false,
     message: 'Too many requests, please try again later.',
@@ -22,7 +22,16 @@ export const generalLimiter = rateLimit({
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
   skip: (req: Request) => {
     // Skip rate limiting for health checks
-    return req.path === '/health' || req.path === '/api/health';
+    if (req.path === '/health' || req.path === '/api/health') {
+      return true;
+    }
+    // Skip rate limiting for authenticated admin users (for bulk imports)
+    // Check if user is authenticated and is admin (set by auth middleware)
+    const user = (req as Request & { user?: { role?: string } }).user;
+    if (user?.role === 'ADMIN') {
+      return true;
+    }
+    return false;
   },
   // Trust proxy - needed when behind Cloudflare/Render
   validate: { xForwardedForHeader: false },
