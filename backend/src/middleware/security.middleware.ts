@@ -21,6 +21,10 @@ export const generalLimiter = rateLimit({
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
   skip: (req: Request) => {
+    // Skip rate limiting for CORS preflight requests
+    if (req.method === 'OPTIONS') {
+      return true;
+    }
     // Skip rate limiting for health checks
     if (req.path === '/health' || req.path === '/api/health') {
       return true;
@@ -43,7 +47,7 @@ export const generalLimiter = rateLimit({
  */
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // Limit each IP to 5 login attempts per windowMs
+  max: process.env.NODE_ENV === 'production' ? 10 : 50, // More attempts allowed
   message: {
     success: false,
     message: 'Too many login attempts, please try again after 15 minutes.',
@@ -52,6 +56,10 @@ export const authLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skipSuccessfulRequests: true, // Don't count successful requests
+  skip: (req: Request) => {
+    // Skip rate limiting for CORS preflight requests
+    return req.method === 'OPTIONS';
+  },
 });
 
 /**
