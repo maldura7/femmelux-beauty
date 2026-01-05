@@ -9,6 +9,7 @@ import applicationRoutes from './application.routes';
 import userRoutes from './user.routes';
 import messageRoutes from './message.routes';
 import seedRoutes from './seed.routes';
+import imageScraperRoutes from './imageScraper.routes';
 import { orderController } from '../controllers';
 import { authenticateToken, authorizeRoles, validate, paginationRules } from '../middleware';
 
@@ -66,6 +67,9 @@ router.use('/messages', messageRoutes);
 
 // Seed route (one-time database initialization)
 router.use('/seed', seedRoutes);
+
+// Image scraper routes (admin only - for bulk product image fetching)
+router.use('/image-scraper', imageScraperRoutes);
 
 // ============================================
 // NESTED ROUTES
