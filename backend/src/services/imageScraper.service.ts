@@ -681,9 +681,69 @@ export async function getProductsWithoutImagesCount(brandId?: string): Promise<n
   return prisma.product.count({ where: whereClause });
 }
 
+/**
+ * Save a specific image URL to a product
+ * This function is used when the admin manually selects an image from search results
+ */
+export async function saveProductImage(productId: string, imageUrl: string): Promise<ScrapeResult> {
+  try {
+    // Get product details
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+      select: { id: true, name: true },
+    });
+
+    if (!product) {
+      return {
+        productId,
+        productName: 'Unknown',
+        success: false,
+        error: 'Product not found',
+      };
+    }
+
+    // Download and save the image locally
+    const localPath = await downloadImage(imageUrl, productId);
+
+    if (!localPath) {
+      return {
+        productId,
+        productName: product.name,
+        success: false,
+        error: 'Failed to download image',
+      };
+    }
+
+    // Update product with new image
+    await prisma.product.update({
+      where: { id: productId },
+      data: {
+        images: [localPath],
+      },
+    });
+
+    return {
+      productId,
+      productName: product.name,
+      success: true,
+      imageUrl: imageUrl,
+      localPath,
+      source: 'manual',
+    };
+  } catch (error) {
+    return {
+      productId,
+      productName: 'Unknown',
+      success: false,
+      error: (error as Error).message,
+    };
+  }
+}
+
 export default {
   searchProductImage,
   findAndAssignProductImage,
   bulkFindProductImages,
   getProductsWithoutImagesCount,
+  saveProductImage,
 };

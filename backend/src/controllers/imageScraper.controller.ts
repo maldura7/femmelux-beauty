@@ -4,6 +4,7 @@ import {
   findAndAssignProductImage,
   bulkFindProductImages,
   getProductsWithoutImagesCount,
+  saveProductImage,
 } from '../services/imageScraper.service';
 
 // ============================================
@@ -55,10 +56,14 @@ export const searchImages = async (req: Request, res: Response): Promise<void> =
 /**
  * Find and assign image to a single product
  * POST /api/image-scraper/assign/:productId
+ *
+ * If imageUrl is provided in body, saves that URL directly.
+ * Otherwise, searches for images automatically.
  */
 export const assignProductImage = async (req: Request, res: Response): Promise<void> => {
   try {
     const { productId } = req.params;
+    const { imageUrl } = req.body;
 
     if (!productId) {
       res.status(400).json({
@@ -68,6 +73,27 @@ export const assignProductImage = async (req: Request, res: Response): Promise<v
       return;
     }
 
+    // If imageUrl is provided, save it directly without searching
+    if (imageUrl) {
+      const result = await saveProductImage(productId, imageUrl);
+
+      if (result.success) {
+        res.json({
+          success: true,
+          data: result,
+          message: 'Image saved successfully',
+        });
+      } else {
+        res.status(400).json({
+          success: false,
+          message: result.error,
+          data: result,
+        });
+      }
+      return;
+    }
+
+    // If no imageUrl provided, search automatically
     const result = await findAndAssignProductImage(productId);
 
     if (result.success) {

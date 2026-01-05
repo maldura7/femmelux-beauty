@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import {
   PhotoIcon,
   MagnifyingGlassIcon,
@@ -10,8 +10,11 @@ import {
   FunnelIcon,
   ArrowDownTrayIcon,
   EyeIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
 } from '@heroicons/react/24/outline';
 import api from '@/lib/api';
+import { resolveImageUrl } from '@/lib/utils';
 
 interface Brand {
   id: string;
@@ -45,10 +48,21 @@ interface ProductWithImages extends Product {
   saved?: boolean;
 }
 
+interface Pagination {
+  total: number;
+  page: number;
+  limit: number;
+  pages: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+}
+
+const ITEMS_PER_PAGE = 50;
+
 export default function ImageScraperPage() {
   const [brands, setBrands] = useState<Brand[]>([]);
   const [products, setProducts] = useState<ProductWithImages[]>([]);
-  const [filteredProducts, setFilteredProducts] = useState<ProductWithImages[]>([]);
+  const [pagination, setPagination] = useState<Pagination | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,6 +70,7 @@ export default function ImageScraperPage() {
   const [selectedBrand, setSelectedBrand] = useState<string>('');
   const [showOnlyWithoutImages, setShowOnlyWithoutImages] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Bulk operations
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
@@ -65,20 +80,20 @@ export default function ImageScraperPage() {
   // Preview modal
   const [previewProduct, setPreviewProduct] = useState<ProductWithImages | null>(null);
 
-  // Fetch brands and products on mount
+  // Fetch brands on mount
   useEffect(() => {
     fetchBrands();
-    fetchProducts();
   }, []);
 
-  // Apply filters when products or filters change
+  // Fetch products when filters or page changes
   useEffect(() => {
-    applyFilters();
-  }, [products, selectedBrand, showOnlyWithoutImages, searchQuery]);
+    fetchProducts();
+    setSelectedProducts(new Set()); // Clear selection on filter/page change
+  }, [selectedBrand, showOnlyWithoutImages, searchQuery, currentPage]);
 
   const fetchBrands = async () => {
     try {
-      const response = await api.get('/brands?limit=200');
+      const response = await api.get('/brands?limit=100');
       const brandsData = response.data.data?.brands || response.data.data || [];
       setBrands(brandsData);
     } catch (err) {
@@ -90,26 +105,35 @@ export default function ImageScraperPage() {
     setIsLoading(true);
     setError(null);
     try {
-      // Fetch all products with pagination (max 100 per page)
-      let allProducts: ProductWithImages[] = [];
-      let page = 1;
-      let hasMore = true;
+      // Build query params
+      const params = new URLSearchParams();
+      params.append('limit', String(ITEMS_PER_PAGE));
+      params.append('page', String(currentPage));
 
-      while (hasMore) {
-        const response = await api.get(`/products?limit=100&page=${page}`);
-        const productsData = response.data.data?.products || response.data.data || [];
-        const pagination = response.data.data?.pagination;
-
-        allProducts = [...allProducts, ...productsData];
-
-        if (pagination?.hasNextPage) {
-          page++;
-        } else {
-          hasMore = false;
-        }
+      if (selectedBrand) {
+        params.append('brandId', selectedBrand);
       }
 
-      setProducts(allProducts);
+      if (searchQuery.trim()) {
+        params.append('search', searchQuery.trim());
+      }
+
+      // Note: showOnlyWithoutImages is filtered client-side after fetch
+      // because the API doesn't have this filter built-in
+
+      const response = await api.get(`/products?${params.toString()}`);
+      let productsData = response.data.data?.products || response.data.data || [];
+      const paginationData = response.data.data?.pagination;
+
+      // Client-side filter for products without images
+      if (showOnlyWithoutImages) {
+        productsData = productsData.filter((p: Product) =>
+          !p.images || p.images.length === 0 || p.images.every(img => !img || img.includes('placeholder'))
+        );
+      }
+
+      setProducts(productsData);
+      setPagination(paginationData || null);
     } catch (err: any) {
       console.error('Failed to fetch products:', err);
       const errorMessage = err?.response?.data?.message || err?.message || 'Failed to load products';
@@ -119,32 +143,6 @@ export default function ImageScraperPage() {
       setIsLoading(false);
     }
   };
-
-  const applyFilters = useCallback(() => {
-    let filtered = [...products];
-
-    // Filter by brand
-    if (selectedBrand) {
-      filtered = filtered.filter(p => p.brand?.id === selectedBrand);
-    }
-
-    // Filter by images
-    if (showOnlyWithoutImages) {
-      filtered = filtered.filter(p => !p.images || p.images.length === 0 || p.images.every(img => !img || img.includes('placeholder')));
-    }
-
-    // Filter by search query
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(p =>
-        p.name.toLowerCase().includes(query) ||
-        p.sku.toLowerCase().includes(query) ||
-        p.brand?.name.toLowerCase().includes(query)
-      );
-    }
-
-    setFilteredProducts(filtered);
-  }, [products, selectedBrand, showOnlyWithoutImages, searchQuery]);
 
   const hasImage = (product: Product): boolean => {
     return product.images && product.images.length > 0 && product.images.some(img => img && !img.includes('placeholder'));
@@ -203,7 +201,10 @@ export default function ImageScraperPage() {
     ));
 
     try {
-      await api.post(`/image-scraper/assign/${productId}`);
+      // Send the selected image URL to the backend
+      await api.post(`/image-scraper/assign/${productId}`, {
+        imageUrl: product.selectedImage.url,
+      });
 
       setProducts(prev => prev.map(p =>
         p.id === productId ? {
@@ -214,6 +215,7 @@ export default function ImageScraperPage() {
         } : p
       ));
     } catch (err) {
+      console.error('Failed to save image:', err);
       setProducts(prev => prev.map(p =>
         p.id === productId ? { ...p, isSaving: false } : p
       ));
@@ -222,10 +224,10 @@ export default function ImageScraperPage() {
   };
 
   const handleSelectAll = () => {
-    if (selectedProducts.size === filteredProducts.length) {
+    if (selectedProducts.size === products.length) {
       setSelectedProducts(new Set());
     } else {
-      setSelectedProducts(new Set(filteredProducts.map(p => p.id)));
+      setSelectedProducts(new Set(products.map(p => p.id)));
     }
   };
 
@@ -263,7 +265,7 @@ export default function ImageScraperPage() {
   };
 
   const handleBulkSave = async () => {
-    const productsToSave = filteredProducts.filter(p =>
+    const productsToSave = products.filter(p =>
       selectedProducts.has(p.id) && p.selectedImage && !p.saved
     );
 
@@ -280,7 +282,16 @@ export default function ImageScraperPage() {
     alert(`Saved images for ${productsToSave.length} products`);
   };
 
-  const productsWithFoundImages = filteredProducts.filter(p => p.foundImages && p.foundImages.length > 0 && !p.saved);
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleFilterChange = () => {
+    setCurrentPage(1); // Reset to first page when filters change
+  };
+
+  const productsWithFoundImages = products.filter(p => p.foundImages && p.foundImages.length > 0 && !p.saved);
 
   return (
     <div className="p-6 max-w-full">
@@ -304,7 +315,10 @@ export default function ImageScraperPage() {
 
           <select
             value={selectedBrand}
-            onChange={(e) => setSelectedBrand(e.target.value)}
+            onChange={(e) => {
+              setSelectedBrand(e.target.value);
+              handleFilterChange();
+            }}
             className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-pink-500 focus:border-pink-500"
           >
             <option value="">All Brands</option>
@@ -319,23 +333,31 @@ export default function ImageScraperPage() {
             <input
               type="checkbox"
               checked={showOnlyWithoutImages}
-              onChange={(e) => setShowOnlyWithoutImages(e.target.checked)}
+              onChange={(e) => {
+                setShowOnlyWithoutImages(e.target.checked);
+                handleFilterChange();
+              }}
               className="h-4 w-4 text-pink-600 rounded border-gray-300 focus:ring-pink-500"
             />
             <span className="text-sm text-gray-700">Only products without images</span>
           </label>
 
           <div className="flex-1 min-w-[200px]">
-            <div className="relative">
-              <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by name, SKU, or brand..."
-                className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-pink-500 focus:border-pink-500"
-              />
-            </div>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              handleFilterChange();
+            }}>
+              <div className="relative">
+                <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search by name, SKU, or brand... (press Enter)"
+                  className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-pink-500 focus:border-pink-500"
+                />
+              </div>
+            </form>
           </div>
 
           <button
@@ -350,10 +372,15 @@ export default function ImageScraperPage() {
 
         <div className="mt-4 flex items-center justify-between">
           <div className="text-sm text-gray-600">
-            Showing <span className="font-medium">{filteredProducts.length}</span> products
+            {pagination && (
+              <>
+                Showing page <span className="font-medium">{pagination.page}</span> of{' '}
+                <span className="font-medium">{pagination.pages}</span> ({pagination.total} total products)
+              </>
+            )}
             {selectedProducts.size > 0 && (
               <span className="ml-2">
-                (<span className="font-medium text-pink-600">{selectedProducts.size}</span> selected)
+                (<span className="font-medium text-pink-600">{selectedProducts.size}</span> selected on this page)
               </span>
             )}
           </div>
@@ -405,7 +432,7 @@ export default function ImageScraperPage() {
                 <th className="px-4 py-3 text-left">
                   <input
                     type="checkbox"
-                    checked={selectedProducts.size === filteredProducts.length && filteredProducts.length > 0}
+                    checked={selectedProducts.size === products.length && products.length > 0}
                     onChange={handleSelectAll}
                     className="h-4 w-4 text-pink-600 rounded border-gray-300 focus:ring-pink-500"
                   />
@@ -426,14 +453,14 @@ export default function ImageScraperPage() {
                     <p className="mt-2 text-gray-500">Loading products...</p>
                   </td>
                 </tr>
-              ) : filteredProducts.length === 0 ? (
+              ) : products.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
                     No products found matching your filters
                   </td>
                 </tr>
               ) : (
-                filteredProducts.slice(0, 100).map((product) => (
+                products.map((product) => (
                   <tr key={product.id} className={product.saved ? 'bg-green-50' : ''}>
                     <td className="px-4 py-3">
                       <input
@@ -460,11 +487,11 @@ export default function ImageScraperPage() {
                       {hasImage(product) ? (
                         <div className="h-12 w-12 rounded border overflow-hidden">
                           <img
-                            src={product.images[0]}
+                            src={resolveImageUrl(product.images[0]) || ''}
                             alt={product.name}
                             className="h-full w-full object-cover"
                             onError={(e) => {
-                              (e.target as HTMLImageElement).src = '/placeholder.png';
+                              (e.target as HTMLImageElement).style.display = 'none';
                             }}
                           />
                         </div>
@@ -568,9 +595,60 @@ export default function ImageScraperPage() {
           </table>
         </div>
 
-        {filteredProducts.length > 100 && (
-          <div className="px-4 py-3 bg-gray-50 border-t text-sm text-gray-600 text-center">
-            Showing first 100 products. Use filters to narrow down the list.
+        {/* Pagination */}
+        {pagination && pagination.pages > 1 && (
+          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-gray-50">
+            <div className="text-sm text-gray-500">
+              Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to{' '}
+              {Math.min(currentPage * ITEMS_PER_PAGE, pagination.total)} of {pagination.total} products
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={!pagination.hasPrevPage}
+                className="p-2 rounded-lg border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+              >
+                <ChevronLeftIcon className="h-4 w-4" />
+              </button>
+
+              {/* Page numbers */}
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(5, pagination.pages) }, (_, i) => {
+                  let pageNum;
+                  if (pagination.pages <= 5) {
+                    pageNum = i + 1;
+                  } else if (currentPage <= 3) {
+                    pageNum = i + 1;
+                  } else if (currentPage >= pagination.pages - 2) {
+                    pageNum = pagination.pages - 4 + i;
+                  } else {
+                    pageNum = currentPage - 2 + i;
+                  }
+
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => handlePageChange(pageNum)}
+                      className={`px-3 py-1 rounded-lg text-sm ${
+                        currentPage === pageNum
+                          ? 'bg-pink-600 text-white'
+                          : 'border border-gray-300 hover:bg-gray-100'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={!pagination.hasNextPage}
+                className="p-2 rounded-lg border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+              >
+                <ChevronRightIcon className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -619,7 +697,7 @@ export default function ImageScraperPage() {
                       alt={`Option ${idx + 1}`}
                       className="h-full w-full object-cover"
                       onError={(e) => {
-                        (e.target as HTMLImageElement).src = '/placeholder.png';
+                        (e.target as HTMLImageElement).style.display = 'none';
                       }}
                     />
                     <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-60 text-white text-xs p-2">

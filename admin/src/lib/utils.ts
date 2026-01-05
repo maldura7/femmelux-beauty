@@ -155,20 +155,13 @@ export function formatFileSize(bytes: number): string {
 
 /**
  * Get the API base URL (without /api suffix)
- * Uses same hostname detection as api.ts
+ * Uses NEXT_PUBLIC_API_URL environment variable
  */
 function getApiBaseUrl(): string {
-  // In browser, check if we're on production
-  if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname;
-    if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
-      // In production, images are served from the same domain
-      return '';
-    }
-  }
-
-  // Fall back to env variable or localhost
-  return (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api').replace(/\/api$/, '');
+  // Use environment variable (required for production where backend is on different domain)
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+  // Remove /api suffix to get the base URL
+  return apiUrl.replace(/\/api\/?$/, '');
 }
 
 /**
@@ -187,12 +180,12 @@ export function resolveImageUrl(url: string | null | undefined): string | null {
 
   // Relative path starting with /uploads - prefix with API server URL
   if (url.startsWith('/uploads')) {
-    return baseUrl ? `${baseUrl}${url}` : url;
+    return `${baseUrl}${url}`;
   }
 
   // Other relative paths
   if (url.startsWith('/')) {
-    return baseUrl ? `${baseUrl}${url}` : url;
+    return `${baseUrl}${url}`;
   }
 
   return url;
