@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { ShoppingCartIcon } from '@heroicons/react/24/outline';
 import { Product } from '@/lib/api/products.api';
 import { HighlightedText } from './HighlightedText';
-import { formatPrice } from '@/lib/utils';
+import { formatPrice, resolveImageUrl } from '@/lib/utils';
 
 interface SearchResultCardProps {
   product: Product;
@@ -21,7 +21,8 @@ export function SearchResultCard({
   view = 'grid',
   onAddToCart,
 }: SearchResultCardProps) {
-  const primaryImage = product.images.find((img) => img.isPrimary)?.url || product.images[0]?.url;
+  const primaryImageUrl = product.images.find((img) => img.isPrimary)?.url || product.images[0]?.url;
+  const primaryImage = resolveImageUrl(primaryImageUrl);
   const isInStock = product.stock > 0;
   const pricesAvailable = product.price !== null;
 
