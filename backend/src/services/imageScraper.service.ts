@@ -684,6 +684,9 @@ export async function getProductsWithoutImagesCount(brandId?: string): Promise<n
 /**
  * Save a specific image URL to a product
  * This function is used when the admin manually selects an image from search results
+ *
+ * Note: We store the original URL directly instead of downloading to local storage
+ * because cloud platforms like Render use ephemeral storage that gets wiped on deploy.
  */
 export async function saveProductImage(productId: string, imageUrl: string): Promise<ScrapeResult> {
   try {
@@ -702,23 +705,12 @@ export async function saveProductImage(productId: string, imageUrl: string): Pro
       };
     }
 
-    // Download and save the image locally
-    const localPath = await downloadImage(imageUrl, productId);
-
-    if (!localPath) {
-      return {
-        productId,
-        productName: product.name,
-        success: false,
-        error: 'Failed to download image',
-      };
-    }
-
-    // Update product with new image
+    // Store the original URL directly (no download needed)
+    // This is more reliable for cloud deployments with ephemeral storage
     await prisma.product.update({
       where: { id: productId },
       data: {
-        images: [localPath],
+        images: [imageUrl],
       },
     });
 
@@ -727,7 +719,6 @@ export async function saveProductImage(productId: string, imageUrl: string): Pro
       productName: product.name,
       success: true,
       imageUrl: imageUrl,
-      localPath,
       source: 'manual',
     };
   } catch (error) {
