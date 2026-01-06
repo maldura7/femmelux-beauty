@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   PhotoIcon,
   MagnifyingGlassIcon,
@@ -81,7 +81,9 @@ export default function ImageScraperPage() {
   const [bulkSaveProgress, setBulkSaveProgress] = useState({ current: 0, total: 0 });
 
   // Store searched products across all pages (separate from paginated products state)
+  // Use both state (for UI updates) and ref (for reliable access in async functions)
   const [searchedProductsMap, setSearchedProductsMap] = useState<Map<string, ProductWithImages>>(new Map());
+  const searchedProductsRef = useRef<Map<string, ProductWithImages>>(new Map());
 
   // Preview modal
   const [previewProduct, setPreviewProduct] = useState<ProductWithImages | null>(null);
@@ -106,6 +108,7 @@ export default function ImageScraperPage() {
     setSelectedProducts(new Set());
     // Clear searchedProductsMap when filters change (new search context)
     setSearchedProductsMap(new Map());
+    searchedProductsRef.current = new Map();
   }, [selectedBrand, showOnlyWithoutImages, searchQuery]);
 
   // Sync products with searchedProductsMap when navigating pages
@@ -361,6 +364,7 @@ export default function ImageScraperPage() {
 
     // Clear previous searched products map when starting a new bulk search
     const newSearchedProductsMap = new Map<string, ProductWithImages>();
+    searchedProductsRef.current = newSearchedProductsMap;
     let completedCount = 0;
 
     // Process in batches of 5 for parallel searching (much faster)
@@ -425,6 +429,8 @@ export default function ImageScraperPage() {
       // Update progress and map after each batch
       completedCount += batch.length;
       setBulkProgress({ current: completedCount, total: productsToSearch.length });
+      // Update both ref and state
+      searchedProductsRef.current = new Map(newSearchedProductsMap);
       setSearchedProductsMap(new Map(newSearchedProductsMap));
 
       // Small delay between batches to avoid overwhelming the server (500ms instead of 2s per product)
@@ -448,18 +454,22 @@ export default function ImageScraperPage() {
   };
 
   const handleBulkSave = async () => {
-    // Get products to save - prioritize searchedProductsMap for cross-page bulk operations
+    // Get products to save - use ref for reliable access to all searched products
     let productsToSave: ProductWithImages[] = [];
 
-    // Log for debugging
-    console.log('searchedProductsMap size:', searchedProductsMap.size);
-    console.log('searchedProductsMap entries:', Array.from(searchedProductsMap.entries()).slice(0, 3));
+    // Use ref for reliable access (state might be stale in async context)
+    const currentMap = searchedProductsRef.current;
 
-    // Get all products from searchedProductsMap that have a selected image and haven't been saved
-    const mapProducts = Array.from(searchedProductsMap.values()).filter(
+    // Log for debugging
+    console.log('searchedProductsRef size:', currentMap.size);
+    console.log('searchedProductsMap state size:', searchedProductsMap.size);
+    console.log('First 3 entries:', Array.from(currentMap.entries()).slice(0, 3));
+
+    // Get all products from ref that have a selected image and haven't been saved
+    const mapProducts = Array.from(currentMap.values()).filter(
       product => product.selectedImage && !product.saved
     );
-    console.log('Products from map with selectedImage:', mapProducts.length);
+    console.log('Products from ref with selectedImage:', mapProducts.length);
 
     if (mapProducts.length > 0) {
       productsToSave = mapProducts;
@@ -500,19 +510,17 @@ export default function ImageScraperPage() {
           imageUrl: product.selectedImage!.url,
         });
 
-        // Update in searchedProductsMap
-        setSearchedProductsMap(prev => {
-          const newMap = new Map(prev);
-          const existingProduct = newMap.get(product.id);
-          if (existingProduct) {
-            newMap.set(product.id, {
-              ...existingProduct,
-              saved: true,
-              images: [product.selectedImage!.url],
-            });
-          }
-          return newMap;
-        });
+        // Update in searchedProductsMap (both ref and state)
+        const existingProduct = searchedProductsRef.current.get(product.id);
+        if (existingProduct) {
+          const updatedProduct = {
+            ...existingProduct,
+            saved: true,
+            images: [product.selectedImage!.url],
+          };
+          searchedProductsRef.current.set(product.id, updatedProduct);
+        }
+        setSearchedProductsMap(new Map(searchedProductsRef.current));
 
         // Update in current page products if present
         setProducts(prev => prev.map(p =>
