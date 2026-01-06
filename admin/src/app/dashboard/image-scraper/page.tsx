@@ -281,10 +281,12 @@ export default function ImageScraperPage() {
   };
 
   const handleSelectAll = () => {
-    if (selectedProducts.size === products.length && !selectAllAcrossPages) {
+    // Only select products WITHOUT images
+    const productsWithoutImages = products.filter(p => !hasImage(p));
+    if (selectedProducts.size === productsWithoutImages.length && !selectAllAcrossPages) {
       setSelectedProducts(new Set());
     } else {
-      setSelectedProducts(new Set(products.map(p => p.id)));
+      setSelectedProducts(new Set(productsWithoutImages.map(p => p.id)));
       setSelectAllAcrossPages(false);
     }
   };
@@ -295,9 +297,11 @@ export default function ImageScraperPage() {
       setSelectAllAcrossPages(false);
       setSelectedProducts(new Set());
     } else {
-      // Select all across pages
+      // Select all across pages (only products without images)
       setSelectAllAcrossPages(true);
-      setSelectedProducts(new Set(products.map(p => p.id)));
+      // Select products without images on current page
+      const productsWithoutImages = products.filter(p => !hasImage(p));
+      setSelectedProducts(new Set(productsWithoutImages.map(p => p.id)));
     }
   };
 
@@ -313,7 +317,7 @@ export default function ImageScraperPage() {
     setSelectedProducts(newSelected);
   };
 
-  // Fetch all product IDs for bulk operations across pages
+  // Fetch all product IDs for bulk operations across pages (only products without images)
   const fetchAllProductIds = async (): Promise<Product[]> => {
     const allProducts: Product[] = [];
     let page = 1;
@@ -336,12 +340,11 @@ export default function ImageScraperPage() {
       let productsData = response.data.data?.products || response.data.data || [];
       const paginationData = response.data.data?.pagination;
 
-      // Apply the same filter for products without images
-      if (showOnlyWithoutImages) {
-        productsData = productsData.filter((p: Product) =>
-          !p.images || p.images.length === 0 || p.images.every(img => !img || img.includes('placeholder'))
-        );
-      }
+      // Always filter for products without images in bulk operations
+      // (we only want to search for images for products that don't have them)
+      productsData = productsData.filter((p: Product) =>
+        !p.images || p.images.length === 0 || p.images.every(img => !img || img.includes('placeholder'))
+      );
 
       allProducts.push(...productsData);
 
