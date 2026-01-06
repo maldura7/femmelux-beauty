@@ -74,8 +74,10 @@ export default function ImageScraperPage() {
 
   // Bulk operations
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
+  const [selectAllAcrossPages, setSelectAllAcrossPages] = useState(false);
   const [isBulkSearching, setIsBulkSearching] = useState(false);
   const [bulkProgress, setBulkProgress] = useState({ current: 0, total: 0 });
+  const [bulkSaveProgress, setBulkSaveProgress] = useState({ current: 0, total: 0 });
 
   // Preview modal
   const [previewProduct, setPreviewProduct] = useState<ProductWithImages | null>(null);
@@ -88,8 +90,17 @@ export default function ImageScraperPage() {
   // Fetch products when filters or page changes
   useEffect(() => {
     fetchProducts();
-    setSelectedProducts(new Set()); // Clear selection on filter/page change
+    // Only clear selection on filter change, not page change (unless selectAllAcrossPages is false)
+    if (!selectAllAcrossPages) {
+      setSelectedProducts(new Set());
+    }
   }, [selectedBrand, showOnlyWithoutImages, searchQuery, currentPage]);
+
+  // Reset selectAllAcrossPages when filters change
+  useEffect(() => {
+    setSelectAllAcrossPages(false);
+    setSelectedProducts(new Set());
+  }, [selectedBrand, showOnlyWithoutImages, searchQuery]);
 
   const fetchBrands = async () => {
     try {
@@ -224,14 +235,29 @@ export default function ImageScraperPage() {
   };
 
   const handleSelectAll = () => {
-    if (selectedProducts.size === products.length) {
+    if (selectedProducts.size === products.length && !selectAllAcrossPages) {
       setSelectedProducts(new Set());
     } else {
+      setSelectedProducts(new Set(products.map(p => p.id)));
+      setSelectAllAcrossPages(false);
+    }
+  };
+
+  const handleSelectAllAcrossPages = () => {
+    if (selectAllAcrossPages) {
+      // Deselect all
+      setSelectAllAcrossPages(false);
+      setSelectedProducts(new Set());
+    } else {
+      // Select all across pages
+      setSelectAllAcrossPages(true);
       setSelectedProducts(new Set(products.map(p => p.id)));
     }
   };
 
   const handleSelectProduct = (productId: string) => {
+    // If user manually selects/deselects, turn off "select all across pages"
+    setSelectAllAcrossPages(false);
     const newSelected = new Set(selectedProducts);
     if (newSelected.has(productId)) {
       newSelected.delete(productId);
@@ -241,27 +267,122 @@ export default function ImageScraperPage() {
     setSelectedProducts(newSelected);
   };
 
-  const handleBulkSearch = async () => {
-    if (selectedProducts.size === 0) {
-      alert('Please select products first');
-      return;
+  // Fetch all product IDs for bulk operations across pages
+  const fetchAllProductIds = async (): Promise<Product[]> => {
+    const allProducts: Product[] = [];
+    let page = 1;
+    const limit = 100; // Fetch more per request for efficiency
+
+    while (true) {
+      const params = new URLSearchParams();
+      params.append('limit', String(limit));
+      params.append('page', String(page));
+
+      if (selectedBrand) {
+        params.append('brandId', selectedBrand);
+      }
+
+      if (searchQuery.trim()) {
+        params.append('search', searchQuery.trim());
+      }
+
+      const response = await api.get(`/products?${params.toString()}`);
+      let productsData = response.data.data?.products || response.data.data || [];
+      const paginationData = response.data.data?.pagination;
+
+      // Apply the same filter for products without images
+      if (showOnlyWithoutImages) {
+        productsData = productsData.filter((p: Product) =>
+          !p.images || p.images.length === 0 || p.images.every(img => !img || img.includes('placeholder'))
+        );
+      }
+
+      allProducts.push(...productsData);
+
+      if (!paginationData || page >= paginationData.pages) {
+        break;
+      }
+      page++;
     }
 
-    setIsBulkSearching(true);
-    setBulkProgress({ current: 0, total: selectedProducts.size });
+    return allProducts;
+  };
 
-    const productIds = Array.from(selectedProducts);
+  const handleBulkSearch = async () => {
+    let productsToSearch: Product[] = [];
 
-    for (let i = 0; i < productIds.length; i++) {
-      setBulkProgress({ current: i + 1, total: productIds.length });
-      await searchImagesForProduct(productIds[i]);
+    if (selectAllAcrossPages && pagination) {
+      // Fetch all products across pages
+      const confirmSearch = confirm(
+        `This will search images for ALL ${pagination.total} products matching your filters. This may take a while. Continue?`
+      );
+      if (!confirmSearch) return;
+
+      setIsBulkSearching(true);
+      setBulkProgress({ current: 0, total: pagination.total });
+
+      try {
+        productsToSearch = await fetchAllProductIds();
+      } catch (err) {
+        console.error('Failed to fetch all products:', err);
+        alert('Failed to fetch all products');
+        setIsBulkSearching(false);
+        return;
+      }
+    } else if (selectedProducts.size === 0) {
+      alert('Please select products first');
+      return;
+    } else {
+      // Use selected products from current page
+      productsToSearch = products.filter(p => selectedProducts.has(p.id));
+      setIsBulkSearching(true);
+    }
+
+    setBulkProgress({ current: 0, total: productsToSearch.length });
+
+    for (let i = 0; i < productsToSearch.length; i++) {
+      const product = productsToSearch[i];
+      setBulkProgress({ current: i + 1, total: productsToSearch.length });
+
+      // Search for images
+      try {
+        const response = await api.post('/image-scraper/search', {
+          name: product.name,
+          brand: product.brand?.name,
+          sku: product.sku,
+          category: product.category,
+        });
+
+        const images = response.data.data?.results || [];
+
+        // Update product in state if it's on current page
+        setProducts(prev => prev.map(p =>
+          p.id === product.id ? {
+            ...p,
+            isSearching: false,
+            foundImages: images,
+            selectedImage: images.length > 0 ? images[0] : undefined,
+          } : p
+        ));
+      } catch (err) {
+        console.error(`Failed to search images for ${product.name}:`, err);
+        setProducts(prev => prev.map(p =>
+          p.id === product.id ? {
+            ...p,
+            isSearching: false,
+            searchError: 'Search failed',
+          } : p
+        ));
+      }
+
       // Add delay to avoid rate limiting
-      if (i < productIds.length - 1) {
+      if (i < productsToSearch.length - 1) {
         await new Promise(resolve => setTimeout(resolve, 2000));
       }
     }
 
     setIsBulkSearching(false);
+    alert(`Completed searching images for ${productsToSearch.length} products`);
   };
 
   const handleBulkSave = async () => {
@@ -370,25 +491,48 @@ export default function ImageScraperPage() {
           </button>
         </div>
 
-        <div className="mt-4 flex items-center justify-between">
-          <div className="text-sm text-gray-600">
-            {pagination && (
-              <>
-                Showing page <span className="font-medium">{pagination.page}</span> of{' '}
-                <span className="font-medium">{pagination.pages}</span> ({pagination.total} total products)
-              </>
-            )}
-            {selectedProducts.size > 0 && (
-              <span className="ml-2">
-                (<span className="font-medium text-pink-600">{selectedProducts.size}</span> selected on this page)
-              </span>
+        <div className="mt-4 flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-gray-600">
+              {pagination && (
+                <>
+                  Showing page <span className="font-medium">{pagination.page}</span> of{' '}
+                  <span className="font-medium">{pagination.pages}</span> ({pagination.total} total products)
+                </>
+              )}
+              {selectAllAcrossPages && pagination && (
+                <span className="ml-2 text-pink-600 font-medium">
+                  (All {pagination.total} products selected)
+                </span>
+              )}
+              {!selectAllAcrossPages && selectedProducts.size > 0 && (
+                <span className="ml-2">
+                  (<span className="font-medium text-pink-600">{selectedProducts.size}</span> selected on this page)
+                </span>
+              )}
+            </div>
+
+            {/* Select All Across Pages Button */}
+            {pagination && pagination.total > ITEMS_PER_PAGE && (
+              <button
+                onClick={handleSelectAllAcrossPages}
+                className={`px-4 py-2 text-sm rounded-lg border ${
+                  selectAllAcrossPages
+                    ? 'bg-pink-600 text-white border-pink-600'
+                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                {selectAllAcrossPages
+                  ? `✓ All ${pagination.total} Products Selected`
+                  : `Select All ${pagination.total} Products`}
+              </button>
             )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-end gap-2">
             <button
               onClick={handleBulkSearch}
-              disabled={isBulkSearching || selectedProducts.size === 0}
+              disabled={isBulkSearching || (selectedProducts.size === 0 && !selectAllAcrossPages)}
               className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
             >
               {isBulkSearching ? (
@@ -399,7 +543,7 @@ export default function ImageScraperPage() {
               ) : (
                 <>
                   <MagnifyingGlassIcon className="h-4 w-4" />
-                  Search Selected ({selectedProducts.size})
+                  Search {selectAllAcrossPages && pagination ? `All ${pagination.total}` : `Selected (${selectedProducts.size})`}
                 </>
               )}
             </button>
