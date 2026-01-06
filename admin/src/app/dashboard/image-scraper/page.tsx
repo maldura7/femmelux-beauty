@@ -423,30 +423,40 @@ export default function ImageScraperPage() {
       p => p.foundImages && p.foundImages.length > 0
     ).length;
 
-    alert(`Completed searching ${productsToSearch.length} products. Found images for ${productsWithImages} products.`);
+    // Log summary for debugging
+    console.log('Bulk search completed. searchedProductsMap size:', newSearchedProductsMap.size);
+    console.log('Products with images:', productsWithImages);
+
+    alert(`Completed searching ${productsToSearch.length} products.\n\nFound images for ${productsWithImages} products.\n\nClick "Save All Images" to save them.`);
   };
 
   const handleBulkSave = async () => {
-    // Get products to save from both current page and searched products map
-    const productsToSave: ProductWithImages[] = [];
+    // Get products to save - prioritize searchedProductsMap for cross-page bulk operations
+    let productsToSave: ProductWithImages[] = [];
 
-    // First, get from searchedProductsMap (for bulk search across all pages)
-    searchedProductsMap.forEach((product) => {
-      if (product.selectedImage && !product.saved) {
-        productsToSave.push(product);
-      }
-    });
+    // Log for debugging
+    console.log('searchedProductsMap size:', searchedProductsMap.size);
+    console.log('searchedProductsMap entries:', Array.from(searchedProductsMap.entries()).slice(0, 3));
 
-    // If no products in map, fall back to current page products with selection
-    if (productsToSave.length === 0) {
+    // Get all products from searchedProductsMap that have a selected image and haven't been saved
+    const mapProducts = Array.from(searchedProductsMap.values()).filter(
+      product => product.selectedImage && !product.saved
+    );
+    console.log('Products from map with selectedImage:', mapProducts.length);
+
+    if (mapProducts.length > 0) {
+      productsToSave = mapProducts;
+    } else {
+      // Fall back to current page products with selection
       const currentPageProducts = products.filter(p =>
         selectedProducts.has(p.id) && p.selectedImage && !p.saved
       );
-      productsToSave.push(...currentPageProducts);
+      console.log('Products from current page:', currentPageProducts.length);
+      productsToSave = currentPageProducts;
     }
 
     if (productsToSave.length === 0) {
-      alert('No products with selected images to save');
+      alert('No products with selected images to save. Make sure to search for images first.');
       return;
     }
 
@@ -461,6 +471,7 @@ export default function ImageScraperPage() {
 
     let successCount = 0;
     let errorCount = 0;
+    const errors: string[] = [];
 
     for (let i = 0; i < productsToSave.length; i++) {
       const product = productsToSave[i];
@@ -497,7 +508,9 @@ export default function ImageScraperPage() {
 
         successCount++;
       } catch (err: any) {
-        console.error(`Failed to save image for ${product.name}:`, err);
+        const errorMsg = err?.response?.data?.message || err?.message || 'Unknown error';
+        console.error(`Failed to save image for ${product.name}:`, errorMsg, err);
+        errors.push(`${product.name}: ${errorMsg}`);
         errorCount++;
       }
 
@@ -510,7 +523,8 @@ export default function ImageScraperPage() {
     setIsBulkSaving(false);
 
     if (errorCount > 0) {
-      alert(`Saved ${successCount} images. ${errorCount} failed.`);
+      console.error('Save errors:', errors);
+      alert(`Saved ${successCount} images. ${errorCount} failed.\n\nFirst few errors:\n${errors.slice(0, 5).join('\n')}`);
     } else {
       alert(`Successfully saved images for ${successCount} products!`);
     }
