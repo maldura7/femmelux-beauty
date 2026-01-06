@@ -361,58 +361,75 @@ export default function ImageScraperPage() {
 
     // Clear previous searched products map when starting a new bulk search
     const newSearchedProductsMap = new Map<string, ProductWithImages>();
+    let completedCount = 0;
 
-    for (let i = 0; i < productsToSearch.length; i++) {
-      const product = productsToSearch[i];
-      setBulkProgress({ current: i + 1, total: productsToSearch.length });
+    // Process in batches of 5 for parallel searching (much faster)
+    const BATCH_SIZE = 5;
+    const batches: Product[][] = [];
+    for (let i = 0; i < productsToSearch.length; i += BATCH_SIZE) {
+      batches.push(productsToSearch.slice(i, i + BATCH_SIZE));
+    }
 
-      // Search for images
-      try {
-        const response = await api.post('/image-scraper/search', {
-          name: product.name,
-          brand: product.brand?.name,
-          sku: product.sku,
-          category: product.category,
-        });
+    for (const batch of batches) {
+      // Process batch in parallel
+      const batchPromises = batch.map(async (product) => {
+        try {
+          const response = await api.post('/image-scraper/search', {
+            name: product.name,
+            brand: product.brand?.name,
+            sku: product.sku,
+            category: product.category,
+          });
 
-        const images = response.data.data?.results || [];
+          const images = response.data.data?.results || [];
 
-        const productWithImages: ProductWithImages = {
-          ...product,
-          isSearching: false,
-          foundImages: images,
-          selectedImage: images.length > 0 ? images[0] : undefined,
-        };
+          const productWithImages: ProductWithImages = {
+            ...product,
+            isSearching: false,
+            foundImages: images,
+            selectedImage: images.length > 0 ? images[0] : undefined,
+          };
 
-        // Store in map for bulk save across all pages
-        newSearchedProductsMap.set(product.id, productWithImages);
-        setSearchedProductsMap(new Map(newSearchedProductsMap));
+          // Store in map for bulk save across all pages
+          newSearchedProductsMap.set(product.id, productWithImages);
 
-        // Update product in state if it's on current page
-        setProducts(prev => prev.map(p =>
-          p.id === product.id ? productWithImages : p
-        ));
-      } catch (err) {
-        console.error(`Failed to search images for ${product.name}:`, err);
+          // Update product in state if it's on current page
+          setProducts(prev => prev.map(p =>
+            p.id === product.id ? productWithImages : p
+          ));
 
-        const productWithError: ProductWithImages = {
-          ...product,
-          isSearching: false,
-          searchError: 'Search failed',
-        };
+          return { success: true, product: productWithImages };
+        } catch (err) {
+          console.error(`Failed to search images for ${product.name}:`, err);
 
-        // Store failed search in map too
-        newSearchedProductsMap.set(product.id, productWithError);
-        setSearchedProductsMap(new Map(newSearchedProductsMap));
+          const productWithError: ProductWithImages = {
+            ...product,
+            isSearching: false,
+            searchError: 'Search failed',
+          };
 
-        setProducts(prev => prev.map(p =>
-          p.id === product.id ? productWithError : p
-        ));
-      }
+          // Store failed search in map too
+          newSearchedProductsMap.set(product.id, productWithError);
 
-      // Add delay to avoid rate limiting
-      if (i < productsToSearch.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 2000));
+          setProducts(prev => prev.map(p =>
+            p.id === product.id ? productWithError : p
+          ));
+
+          return { success: false, product: productWithError };
+        }
+      });
+
+      // Wait for batch to complete
+      await Promise.all(batchPromises);
+
+      // Update progress and map after each batch
+      completedCount += batch.length;
+      setBulkProgress({ current: completedCount, total: productsToSearch.length });
+      setSearchedProductsMap(new Map(newSearchedProductsMap));
+
+      // Small delay between batches to avoid overwhelming the server (500ms instead of 2s per product)
+      if (completedCount < productsToSearch.length) {
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
     }
 
