@@ -52,6 +52,8 @@ coverage/
 # Uploads (keep directory structure)
 uploads/*
 !uploads/.gitkeep
+backend/uploads/
+**/uploads/products/
 
 # Prisma
 prisma/*.db
@@ -60,3 +62,5 @@ prisma/*.db-journal
 # Temporary files
 nul
 *.tmp
+
+.vercel

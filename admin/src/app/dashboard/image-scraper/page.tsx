@@ -76,8 +76,12 @@ export default function ImageScraperPage() {
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
   const [selectAllAcrossPages, setSelectAllAcrossPages] = useState(false);
   const [isBulkSearching, setIsBulkSearching] = useState(false);
+  const [isBulkSaving, setIsBulkSaving] = useState(false);
   const [bulkProgress, setBulkProgress] = useState({ current: 0, total: 0 });
   const [bulkSaveProgress, setBulkSaveProgress] = useState({ current: 0, total: 0 });
+
+  // Store searched products across all pages (separate from paginated products state)
+  const [searchedProductsMap, setSearchedProductsMap] = useState<Map<string, ProductWithImages>>(new Map());
 
   // Preview modal
   const [previewProduct, setPreviewProduct] = useState<ProductWithImages | null>(null);
@@ -100,7 +104,22 @@ export default function ImageScraperPage() {
   useEffect(() => {
     setSelectAllAcrossPages(false);
     setSelectedProducts(new Set());
+    // Clear searchedProductsMap when filters change (new search context)
+    setSearchedProductsMap(new Map());
   }, [selectedBrand, showOnlyWithoutImages, searchQuery]);
+
+  // Sync products with searchedProductsMap when navigating pages
+  useEffect(() => {
+    if (searchedProductsMap.size > 0 && products.length > 0) {
+      setProducts(prev => prev.map(p => {
+        const searchedProduct = searchedProductsMap.get(p.id);
+        if (searchedProduct) {
+          return { ...p, ...searchedProduct };
+        }
+        return p;
+      }));
+    }
+  }, [currentPage, searchedProductsMap.size]);
 
   const fetchBrands = async () => {
     try {
@@ -340,6 +359,9 @@ export default function ImageScraperPage() {
 
     setBulkProgress({ current: 0, total: productsToSearch.length });
 
+    // Clear previous searched products map when starting a new bulk search
+    const newSearchedProductsMap = new Map<string, ProductWithImages>();
+
     for (let i = 0; i < productsToSearch.length; i++) {
       const product = productsToSearch[i];
       setBulkProgress({ current: i + 1, total: productsToSearch.length });
@@ -355,23 +377,36 @@ export default function ImageScraperPage() {
 
         const images = response.data.data?.results || [];
 
+        const productWithImages: ProductWithImages = {
+          ...product,
+          isSearching: false,
+          foundImages: images,
+          selectedImage: images.length > 0 ? images[0] : undefined,
+        };
+
+        // Store in map for bulk save across all pages
+        newSearchedProductsMap.set(product.id, productWithImages);
+        setSearchedProductsMap(new Map(newSearchedProductsMap));
+
         // Update product in state if it's on current page
         setProducts(prev => prev.map(p =>
-          p.id === product.id ? {
-            ...p,
-            isSearching: false,
-            foundImages: images,
-            selectedImage: images.length > 0 ? images[0] : undefined,
-          } : p
+          p.id === product.id ? productWithImages : p
         ));
       } catch (err) {
         console.error(`Failed to search images for ${product.name}:`, err);
+
+        const productWithError: ProductWithImages = {
+          ...product,
+          isSearching: false,
+          searchError: 'Search failed',
+        };
+
+        // Store failed search in map too
+        newSearchedProductsMap.set(product.id, productWithError);
+        setSearchedProductsMap(new Map(newSearchedProductsMap));
+
         setProducts(prev => prev.map(p =>
-          p.id === product.id ? {
-            ...p,
-            isSearching: false,
-            searchError: 'Search failed',
-          } : p
+          p.id === product.id ? productWithError : p
         ));
       }
 
@@ -382,25 +417,103 @@ export default function ImageScraperPage() {
     }
 
     setIsBulkSearching(false);
-    alert(`Completed searching images for ${productsToSearch.length} products`);
+
+    // Count products with found images
+    const productsWithImages = Array.from(newSearchedProductsMap.values()).filter(
+      p => p.foundImages && p.foundImages.length > 0
+    ).length;
+
+    alert(`Completed searching ${productsToSearch.length} products. Found images for ${productsWithImages} products.`);
   };
 
   const handleBulkSave = async () => {
-    const productsToSave = products.filter(p =>
-      selectedProducts.has(p.id) && p.selectedImage && !p.saved
-    );
+    // Get products to save from both current page and searched products map
+    const productsToSave: ProductWithImages[] = [];
+
+    // First, get from searchedProductsMap (for bulk search across all pages)
+    searchedProductsMap.forEach((product) => {
+      if (product.selectedImage && !product.saved) {
+        productsToSave.push(product);
+      }
+    });
+
+    // If no products in map, fall back to current page products with selection
+    if (productsToSave.length === 0) {
+      const currentPageProducts = products.filter(p =>
+        selectedProducts.has(p.id) && p.selectedImage && !p.saved
+      );
+      productsToSave.push(...currentPageProducts);
+    }
 
     if (productsToSave.length === 0) {
       alert('No products with selected images to save');
       return;
     }
 
-    for (const product of productsToSave) {
-      await saveImageForProduct(product.id);
-      await new Promise(resolve => setTimeout(resolve, 500));
+    const confirmSave = productsToSave.length > 10
+      ? confirm(`This will save images for ${productsToSave.length} products. Continue?`)
+      : true;
+
+    if (!confirmSave) return;
+
+    setIsBulkSaving(true);
+    setBulkSaveProgress({ current: 0, total: productsToSave.length });
+
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (let i = 0; i < productsToSave.length; i++) {
+      const product = productsToSave[i];
+      setBulkSaveProgress({ current: i + 1, total: productsToSave.length });
+
+      try {
+        // Send the selected image URL to the backend
+        await api.post(`/image-scraper/assign/${product.id}`, {
+          imageUrl: product.selectedImage!.url,
+        });
+
+        // Update in searchedProductsMap
+        setSearchedProductsMap(prev => {
+          const newMap = new Map(prev);
+          const existingProduct = newMap.get(product.id);
+          if (existingProduct) {
+            newMap.set(product.id, {
+              ...existingProduct,
+              saved: true,
+              images: [product.selectedImage!.url],
+            });
+          }
+          return newMap;
+        });
+
+        // Update in current page products if present
+        setProducts(prev => prev.map(p =>
+          p.id === product.id ? {
+            ...p,
+            saved: true,
+            images: [product.selectedImage!.url],
+          } : p
+        ));
+
+        successCount++;
+      } catch (err: any) {
+        console.error(`Failed to save image for ${product.name}:`, err);
+        errorCount++;
+      }
+
+      // Add delay to avoid rate limiting
+      if (i < productsToSave.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
     }
 
-    alert(`Saved images for ${productsToSave.length} products`);
+    setIsBulkSaving(false);
+
+    if (errorCount > 0) {
+      alert(`Saved ${successCount} images. ${errorCount} failed.`);
+    } else {
+      alert(`Successfully saved images for ${successCount} products!`);
+    }
   };
 
   const handlePageChange = (page: number) => {
@@ -412,7 +525,14 @@ export default function ImageScraperPage() {
     setCurrentPage(1); // Reset to first page when filters change
   };
 
-  const productsWithFoundImages = products.filter(p => p.foundImages && p.foundImages.length > 0 && !p.saved);
+  // Count products with found images from both sources
+  const productsWithFoundImagesFromMap = Array.from(searchedProductsMap.values()).filter(
+    p => p.foundImages && p.foundImages.length > 0 && p.selectedImage && !p.saved
+  );
+  const productsWithFoundImagesFromCurrentPage = products.filter(
+    p => p.foundImages && p.foundImages.length > 0 && p.selectedImage && !p.saved && !searchedProductsMap.has(p.id)
+  );
+  const totalProductsToSave = productsWithFoundImagesFromMap.length + productsWithFoundImagesFromCurrentPage.length;
 
   return (
     <div className="p-6 max-w-full">
@@ -510,6 +630,11 @@ export default function ImageScraperPage() {
                   (<span className="font-medium text-pink-600">{selectedProducts.size}</span> selected on this page)
                 </span>
               )}
+              {searchedProductsMap.size > 0 && (
+                <span className="ml-2 text-blue-600">
+                  • {searchedProductsMap.size} products searched, {totalProductsToSave} ready to save
+                </span>
+              )}
             </div>
 
             {/* Select All Across Pages Button */}
@@ -550,11 +675,20 @@ export default function ImageScraperPage() {
 
             <button
               onClick={handleBulkSave}
-              disabled={productsWithFoundImages.length === 0}
+              disabled={totalProductsToSave === 0 || isBulkSaving}
               className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center gap-2"
             >
-              <ArrowDownTrayIcon className="h-4 w-4" />
-              Save All Images ({productsWithFoundImages.length})
+              {isBulkSaving ? (
+                <>
+                  <ArrowPathIcon className="h-4 w-4 animate-spin" />
+                  Saving {bulkSaveProgress.current}/{bulkSaveProgress.total}...
+                </>
+              ) : (
+                <>
+                  <ArrowDownTrayIcon className="h-4 w-4" />
+                  Save All Images ({totalProductsToSave})
+                </>
+              )}
             </button>
           </div>
         </div>

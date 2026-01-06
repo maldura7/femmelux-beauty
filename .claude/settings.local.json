@@ -58,7 +58,14 @@
       "Bash(timeout /t 30 /nobreak)",
       "Bash(where:*)",
       "Bash(timeout /t 60 /nobreak)",
-      "Bash(npx prisma migrate diff:*)"
+      "Bash(npx prisma migrate diff:*)",
+      "Bash(C:UsersAhmed AlduraAppDataLocalMicrosoftWinGetPackagesDigitalOcean.Doctl_Microsoft.Winget.Source_8wekyb3d8bbwedoctl.exe apps list-deployments d9ebdf5b-9a7b-404e-b19c-5eacf0cc398f --format ID,Phase,CreatedAt)",
+      "Bash(\"C:\\\\Users\\\\Ahmed Aldura\\\\AppData\\\\Local\\\\Microsoft\\\\WinGet\\\\Packages\\\\DigitalOcean.Doctl_Microsoft.Winget.Source_8wekyb3d8bbwe\\\\doctl.exe\" apps list-deployments d9ebdf5b-9a7b-404e-b19c-5eacf0cc398f --format ID,Phase,CreatedAt)",
+      "Bash(git rm:*)",
+      "Bash(vercel --version:*)",
+      "Bash(npx vercel:*)",
+      "Bash(python -c:*)",
+      "Bash(git restore:*)"
     ]
   }
 }
