@@ -84,6 +84,8 @@ export default function ImageScraperPage() {
   // Use both state (for UI updates) and ref (for reliable access in async functions)
   const [searchedProductsMap, setSearchedProductsMap] = useState<Map<string, ProductWithImages>>(new Map());
   const searchedProductsRef = useRef<Map<string, ProductWithImages>>(new Map());
+  // Track count of products ready to save (updated during search)
+  const [productsReadyToSaveCount, setProductsReadyToSaveCount] = useState(0);
 
   // Preview modal
   const [previewProduct, setPreviewProduct] = useState<ProductWithImages | null>(null);
@@ -109,6 +111,7 @@ export default function ImageScraperPage() {
     // Clear searchedProductsMap when filters change (new search context)
     setSearchedProductsMap(new Map());
     searchedProductsRef.current = new Map();
+    setProductsReadyToSaveCount(0);
   }, [selectedBrand, showOnlyWithoutImages, searchQuery]);
 
   // Sync products with searchedProductsMap when navigating pages
@@ -432,6 +435,11 @@ export default function ImageScraperPage() {
       // Update both ref and state
       searchedProductsRef.current = new Map(newSearchedProductsMap);
       setSearchedProductsMap(new Map(newSearchedProductsMap));
+      // Update count of products ready to save
+      const readyCount = Array.from(newSearchedProductsMap.values()).filter(
+        p => p.foundImages && p.foundImages.length > 0 && p.selectedImage && !p.saved
+      ).length;
+      setProductsReadyToSaveCount(readyCount);
 
       // Small delay between batches to avoid overwhelming the server (500ms instead of 2s per product)
       if (completedCount < productsToSearch.length) {
@@ -547,6 +555,12 @@ export default function ImageScraperPage() {
 
     setIsBulkSaving(false);
 
+    // Update the count after saving
+    const remainingCount = Array.from(searchedProductsRef.current.values()).filter(
+      p => p.foundImages && p.foundImages.length > 0 && p.selectedImage && !p.saved
+    ).length;
+    setProductsReadyToSaveCount(remainingCount);
+
     if (errorCount > 0) {
       console.error('Save errors:', errors);
       alert(`Saved ${successCount} images. ${errorCount} failed.\n\nFirst few errors:\n${errors.slice(0, 5).join('\n')}`);
@@ -564,14 +578,13 @@ export default function ImageScraperPage() {
     setCurrentPage(1); // Reset to first page when filters change
   };
 
-  // Count products with found images from both sources
-  const productsWithFoundImagesFromMap = Array.from(searchedProductsMap.values()).filter(
-    p => p.foundImages && p.foundImages.length > 0 && p.selectedImage && !p.saved
-  );
-  const productsWithFoundImagesFromCurrentPage = products.filter(
-    p => p.foundImages && p.foundImages.length > 0 && p.selectedImage && !p.saved && !searchedProductsMap.has(p.id)
-  );
-  const totalProductsToSave = productsWithFoundImagesFromMap.length + productsWithFoundImagesFromCurrentPage.length;
+  // Use the tracked count state for accurate display during async operations
+  // Fall back to calculating from current page products if no bulk search was done
+  const totalProductsToSave = productsReadyToSaveCount > 0
+    ? productsReadyToSaveCount
+    : products.filter(
+        p => p.foundImages && p.foundImages.length > 0 && p.selectedImage && !p.saved
+      ).length;
 
   return (
     <div className="p-6 max-w-full">
