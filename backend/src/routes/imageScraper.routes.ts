@@ -5,6 +5,7 @@ import {
   assignProductImage,
   bulkAssignImages,
   getStats,
+  fixBrokenPaths,
 } from '../controllers/imageScraper.controller';
 
 const router = Router();
@@ -41,5 +42,12 @@ router.post('/bulk-assign', authenticateToken, authorizeRoles('ADMIN'), bulkAssi
  * @access  Admin only
  */
 router.get('/stats', authenticateToken, authorizeRoles('ADMIN'), getStats);
+
+/**
+ * @route   POST /api/image-scraper/fix-broken-paths
+ * @desc    Fix products with broken local image paths (clears them for re-search)
+ * @access  Admin only
+ */
+router.post('/fix-broken-paths', authenticateToken, authorizeRoles('ADMIN'), fixBrokenPaths);
 
 export default router;

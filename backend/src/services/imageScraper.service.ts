@@ -731,10 +731,64 @@ export async function saveProductImage(productId: string, imageUrl: string): Pro
   }
 }
 
+/**
+ * Fix products with broken local image paths by clearing them
+ * This allows them to be re-searched and saved with proper external URLs
+ */
+export async function fixBrokenImagePaths(): Promise<{
+  total: number;
+  fixed: number;
+  products: { id: string; name: string; oldImages: string[] }[];
+}> {
+  // Find products with local upload paths
+  const products = await prisma.product.findMany({
+    where: {
+      images: {
+        isEmpty: false,
+      },
+    },
+    select: {
+      id: true,
+      name: true,
+      images: true,
+    },
+  });
+
+  // Filter products with local paths (starting with /uploads/)
+  const productsWithLocalPaths = products.filter(p => {
+    const images = p.images as string[];
+    return images && images.length > 0 && images.some(img =>
+      img && (img.startsWith('/uploads/') || img.startsWith('uploads/'))
+    );
+  });
+
+  const fixed: { id: string; name: string; oldImages: string[] }[] = [];
+
+  // Clear images for products with local paths
+  for (const product of productsWithLocalPaths) {
+    await prisma.product.update({
+      where: { id: product.id },
+      data: { images: [] },
+    });
+    fixed.push({
+      id: product.id,
+      name: product.name,
+      oldImages: product.images as string[],
+    });
+  }
+
+  return {
+    total: productsWithLocalPaths.length,
+    fixed: fixed.length,
+    products: fixed,
+  };
+}
+
 export default {
   searchProductImage,
   findAndAssignProductImage,
   bulkFindProductImages,
   getProductsWithoutImagesCount,
   saveProductImage,
+  fixBrokenImagePaths,
 };

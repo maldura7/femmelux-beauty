@@ -5,6 +5,7 @@ import {
   bulkFindProductImages,
   getProductsWithoutImagesCount,
   saveProductImage,
+  fixBrokenImagePaths,
 } from '../services/imageScraper.service';
 
 // ============================================
@@ -186,9 +187,35 @@ export const getStats = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
+/**
+ * Fix broken image paths (local /uploads/ paths that no longer work)
+ * POST /api/image-scraper/fix-broken-paths
+ */
+export const fixBrokenPaths = async (_req: Request, res: Response): Promise<void> => {
+  try {
+    console.log('Starting fix for broken image paths...');
+
+    const result = await fixBrokenImagePaths();
+
+    res.json({
+      success: true,
+      data: result,
+      message: `Fixed ${result.fixed} products with broken local image paths. They can now be re-searched.`,
+    });
+  } catch (error) {
+    console.error('Fix broken paths error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fix broken image paths',
+      error: (error as Error).message,
+    });
+  }
+};
+
 export default {
   searchImages,
   assignProductImage,
   bulkAssignImages,
   getStats,
+  fixBrokenPaths,
 };

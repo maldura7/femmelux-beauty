@@ -77,6 +77,7 @@ export default function ImageScraperPage() {
   const [selectAllAcrossPages, setSelectAllAcrossPages] = useState(false);
   const [isBulkSearching, setIsBulkSearching] = useState(false);
   const [isBulkSaving, setIsBulkSaving] = useState(false);
+  const [isFixingBrokenPaths, setIsFixingBrokenPaths] = useState(false);
   const [bulkProgress, setBulkProgress] = useState({ current: 0, total: 0 });
   const [bulkSaveProgress, setBulkSaveProgress] = useState({ current: 0, total: 0 });
 
@@ -598,6 +599,34 @@ export default function ImageScraperPage() {
     setCurrentPage(1); // Reset to first page when filters change
   };
 
+  const handleFixBrokenPaths = async () => {
+    const confirmed = confirm(
+      'This will clear all broken image paths (local /uploads/ paths that no longer work on the server).\n\n' +
+      'After fixing, you\'ll need to re-search and re-save images for those products.\n\n' +
+      'Continue?'
+    );
+    if (!confirmed) return;
+
+    setIsFixingBrokenPaths(true);
+    try {
+      const response = await api.post('/image-scraper/fix-broken-paths');
+      const result = response.data.data;
+
+      alert(
+        `Fixed ${result.fixed} products with broken image paths.\n\n` +
+        'These products now appear as "without images" and can be re-searched.'
+      );
+
+      // Refresh the product list
+      fetchProducts();
+    } catch (err: any) {
+      console.error('Failed to fix broken paths:', err);
+      alert('Failed to fix broken paths: ' + (err?.response?.data?.message || err?.message || 'Unknown error'));
+    } finally {
+      setIsFixingBrokenPaths(false);
+    }
+  };
+
   // Use the tracked count state for accurate display during async operations
   // Fall back to calculating from current page products if no bulk search was done
   const totalProductsToSave = productsReadyToSaveCount > 0
@@ -616,6 +645,26 @@ export default function ImageScraperPage() {
         <p className="mt-2 text-gray-600">
           Find and assign images to products by searching beauty retailer websites.
         </p>
+        <div className="mt-3">
+          <button
+            onClick={handleFixBrokenPaths}
+            disabled={isFixingBrokenPaths}
+            className="px-3 py-1.5 text-sm bg-orange-100 text-orange-700 hover:bg-orange-200 rounded-lg disabled:opacity-50 flex items-center gap-2"
+            title="Fix products with broken local image paths"
+          >
+            {isFixingBrokenPaths ? (
+              <>
+                <ArrowPathIcon className="h-4 w-4 animate-spin" />
+                Fixing...
+              </>
+            ) : (
+              <>
+                <XCircleIcon className="h-4 w-4" />
+                Fix Broken Image Paths
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Filters */}

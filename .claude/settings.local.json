@@ -65,7 +65,8 @@
       "Bash(vercel --version:*)",
       "Bash(npx vercel:*)",
       "Bash(python -c:*)",
-      "Bash(git restore:*)"
+      "Bash(git restore:*)",
+      "Bash(npm run build:*)"
     ]
   }
 }
