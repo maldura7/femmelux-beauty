@@ -137,14 +137,15 @@ export default function ImageScraperPage() {
     }
   };
 
-  const fetchProducts = async () => {
+  const fetchProducts = async (pageToFetch?: number) => {
+    const page = pageToFetch ?? currentPage;
     setIsLoading(true);
     setError(null);
     try {
       // Build query params
       const params = new URLSearchParams();
       params.append('limit', String(ITEMS_PER_PAGE));
-      params.append('page', String(currentPage));
+      params.append('page', String(page));
 
       if (selectedBrand) {
         params.append('brandId', selectedBrand);
@@ -168,8 +169,27 @@ export default function ImageScraperPage() {
         );
       }
 
+      // If no products after filtering and there are more pages, auto-advance
+      if (showOnlyWithoutImages && productsData.length === 0 && paginationData?.hasNextPage) {
+        // Keep loading and try next page
+        const nextPage = page + 1;
+        console.log(`Page ${page} has no products without images, trying page ${nextPage}...`);
+        fetchProducts(nextPage);
+        return;
+      }
+
+      // If no products and no more pages, show message
+      if (showOnlyWithoutImages && productsData.length === 0 && !paginationData?.hasNextPage) {
+        console.log('No more products without images found');
+      }
+
       setProducts(productsData);
       setPagination(paginationData || null);
+
+      // Update current page if we fetched a different page
+      if (page !== currentPage) {
+        setCurrentPage(page);
+      }
     } catch (err: any) {
       console.error('Failed to fetch products:', err);
       const errorMessage = err?.response?.data?.message || err?.message || 'Failed to load products';
@@ -654,7 +674,7 @@ export default function ImageScraperPage() {
           </div>
 
           <button
-            onClick={fetchProducts}
+            onClick={() => fetchProducts()}
             disabled={isLoading}
             className="p-2 text-gray-500 hover:text-gray-700"
             title="Refresh products"
