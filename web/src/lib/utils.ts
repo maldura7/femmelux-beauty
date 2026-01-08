@@ -288,6 +288,8 @@ function getApiBaseUrl(): string {
 /**
  * Resolve image URL to full URL
  * Handles relative paths like /uploads/... by prefixing with API server URL
+ * NOTE: Local /uploads/ paths are treated as missing in production since
+ * Render uses ephemeral storage and files are lost on redeploy.
  */
 export function resolveImageUrl(url: string | null | undefined): string | null {
   if (!url) return null;
@@ -298,10 +300,17 @@ export function resolveImageUrl(url: string | null | undefined): string | null {
   }
 
   const baseUrl = getApiBaseUrl();
+  const isProduction = baseUrl.includes('render.com') || baseUrl.includes('onrender.com') || process.env.NODE_ENV === 'production';
 
-  // Relative path starting with /uploads - prefix with API server URL
-  if (url.startsWith('/uploads')) {
-    return `${baseUrl}${url}`;
+  // Local /uploads/ paths don't work in production (ephemeral storage)
+  // Return null to show placeholder instead of broken image
+  if (url.startsWith('/uploads') || url.startsWith('uploads/')) {
+    if (isProduction) {
+      // In production, local uploads don't exist - return null to show placeholder
+      return null;
+    }
+    // In development, try to load from local backend
+    return `${baseUrl}${url.startsWith('/') ? url : '/' + url}`;
   }
 
   // Other relative paths

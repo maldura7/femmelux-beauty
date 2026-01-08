@@ -4,6 +4,23 @@ import { ApiError } from '../middleware';
 import { searchService } from './search.service';
 import { clearSearchResultsCache, clearProductNamesCache } from '../utils/searchCache';
 
+/**
+ * Filter out local upload paths from product images.
+ * Local paths like /uploads/... don't work in production (ephemeral storage).
+ * Only keep external URLs (http://, https://).
+ */
+function sanitizeProductImages(images: string[]): string[] {
+  if (!images || !Array.isArray(images)) return [];
+
+  const isProduction = process.env.NODE_ENV === 'production';
+  if (!isProduction) return images;
+
+  // In production, filter out local paths that don't work
+  return images.filter(url =>
+    url && (url.startsWith('http://') || url.startsWith('https://'))
+  );
+}
+
 // Type for product with brand
 type ProductWithBrand = Product & {
   brand: {
@@ -213,8 +230,14 @@ class ProductService {
       prisma.product.count({ where: whereClause }),
     ]);
 
+    // Sanitize images to remove broken local paths in production
+    const sanitizedProducts = products.map(p => ({
+      ...p,
+      images: sanitizeProductImages(p.images),
+    }));
+
     return {
-      products: products as ProductWithBrand[],
+      products: sanitizedProducts as ProductWithBrand[],
       total,
       page,
       limit,
@@ -241,7 +264,13 @@ class ProductService {
       },
     });
 
-    return product as ProductWithBrand | null;
+    if (!product) return null;
+
+    // Sanitize images to remove broken local paths in production
+    return {
+      ...product,
+      images: sanitizeProductImages(product.images),
+    } as ProductWithBrand;
   }
 
   /**
@@ -263,7 +292,13 @@ class ProductService {
       },
     });
 
-    return product as ProductWithBrand | null;
+    if (!product) return null;
+
+    // Sanitize images to remove broken local paths in production
+    return {
+      ...product,
+      images: sanitizeProductImages(product.images),
+    } as ProductWithBrand;
   }
 
   /**

@@ -3,6 +3,16 @@ import { UserRole } from '@prisma/client';
 import { searchService, SearchFilters } from '../services/search.service';
 import { sanitizeProductsPrices } from '../utils/priceHelper';
 
+/**
+ * Filter out local upload paths from product images.
+ * Local paths like /uploads/... don't work in production (ephemeral storage).
+ */
+function sanitizeImages(images: string[]): string[] {
+  if (!images || !Array.isArray(images)) return [];
+  if (process.env.NODE_ENV !== 'production') return images;
+  return images.filter(url => url && (url.startsWith('http://') || url.startsWith('https://')));
+}
+
 // Extend Request to include user from auth middleware
 interface AuthRequest extends Request {
   user?: {
@@ -78,7 +88,7 @@ class SearchController {
         price: Number(p.price),
         wholesalePrice: Number(p.wholesalePrice),
         sku: p.sku,
-        images: p.images,
+        images: sanitizeImages(p.images),
         quantity: p.quantity,
         category: p.category,
         brand: {
