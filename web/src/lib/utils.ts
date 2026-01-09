@@ -299,19 +299,19 @@ export function resolveImageUrl(url: string | null | undefined): string | null {
     return url;
   }
 
-  const baseUrl = getApiBaseUrl();
-  const isProduction = baseUrl.includes('render.com') || baseUrl.includes('onrender.com') || process.env.NODE_ENV === 'production';
-
-  // Local /uploads/ paths don't work in production (ephemeral storage)
-  // Return null to show placeholder instead of broken image
+  // Local /uploads/ paths don't work in production (ephemeral storage on Render)
+  // Always return null for these paths as they will be broken
   if (url.startsWith('/uploads') || url.startsWith('uploads/')) {
-    if (isProduction) {
-      // In production, local uploads don't exist - return null to show placeholder
-      return null;
+    // Only allow local uploads in development on localhost
+    if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+      const baseUrl = getApiBaseUrl();
+      return `${baseUrl}${url.startsWith('/') ? url : '/' + url}`;
     }
-    // In development, try to load from local backend
-    return `${baseUrl}${url.startsWith('/') ? url : '/' + url}`;
+    // In production/non-localhost, return null to show placeholder
+    return null;
   }
+
+  const baseUrl = getApiBaseUrl();
 
   // Other relative paths
   if (url.startsWith('/')) {
