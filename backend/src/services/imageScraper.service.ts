@@ -682,11 +682,57 @@ export async function getProductsWithoutImagesCount(brandId?: string): Promise<n
 }
 
 /**
+ * Download image and convert to base64 data URL
+ * This ensures images work on all devices (including mobile Safari)
+ * by avoiding hotlink protection and CORS issues
+ */
+async function downloadImageAsBase64(imageUrl: string): Promise<string | null> {
+  try {
+    const response = await axios.get(imageUrl, {
+      responseType: 'arraybuffer',
+      headers: {
+        'User-Agent': getRandomUserAgent(),
+        'Accept': 'image/*',
+      },
+      timeout: 30000,
+      maxContentLength: 10 * 1024 * 1024, // 10MB max
+    });
+
+    // Determine MIME type from content-type or URL
+    const contentType = response.headers['content-type'] || '';
+    let mimeType = 'image/jpeg';
+
+    if (contentType.includes('png')) {
+      mimeType = 'image/png';
+    } else if (contentType.includes('webp')) {
+      mimeType = 'image/webp';
+    } else if (contentType.includes('gif')) {
+      mimeType = 'image/gif';
+    } else if (imageUrl.match(/\.png(\?|$)/i)) {
+      mimeType = 'image/png';
+    } else if (imageUrl.match(/\.webp(\?|$)/i)) {
+      mimeType = 'image/webp';
+    } else if (imageUrl.match(/\.gif(\?|$)/i)) {
+      mimeType = 'image/gif';
+    }
+
+    // Convert to base64
+    const base64 = Buffer.from(response.data).toString('base64');
+    return `data:${mimeType};base64,${base64}`;
+  } catch (error) {
+    console.error(`Failed to download image as base64 from ${imageUrl}:`, (error as Error).message);
+    return null;
+  }
+}
+
+/**
  * Save a specific image URL to a product
  * This function is used when the admin manually selects an image from search results
  *
- * Note: We store the original URL directly instead of downloading to local storage
- * because cloud platforms like Render use ephemeral storage that gets wiped on deploy.
+ * The image is downloaded and converted to base64 data URL to:
+ * 1. Avoid hotlink protection from source websites
+ * 2. Work on all devices including mobile Safari
+ * 3. Avoid CORS issues
  */
 export async function saveProductImage(productId: string, imageUrl: string): Promise<ScrapeResult> {
   try {
@@ -705,12 +751,31 @@ export async function saveProductImage(productId: string, imageUrl: string): Pro
       };
     }
 
-    // Store the original URL directly (no download needed)
-    // This is more reliable for cloud deployments with ephemeral storage
+    // If already a data URL, use it directly
+    let finalImageUrl = imageUrl;
+    if (!imageUrl.startsWith('data:')) {
+      // Download and convert to base64
+      console.log(`Downloading image for ${product.name}...`);
+      const base64Url = await downloadImageAsBase64(imageUrl);
+
+      if (!base64Url) {
+        return {
+          productId,
+          productName: product.name,
+          success: false,
+          error: 'Failed to download image',
+        };
+      }
+
+      finalImageUrl = base64Url;
+      console.log(`Image converted to base64 for ${product.name}`);
+    }
+
+    // Store the base64 data URL
     await prisma.product.update({
       where: { id: productId },
       data: {
-        images: [imageUrl],
+        images: [finalImageUrl],
       },
     });
 
@@ -718,7 +783,7 @@ export async function saveProductImage(productId: string, imageUrl: string): Pro
       productId,
       productName: product.name,
       success: true,
-      imageUrl: imageUrl,
+      imageUrl: finalImageUrl.substring(0, 100) + '...', // Truncate for logging
       source: 'manual',
     };
   } catch (error) {
