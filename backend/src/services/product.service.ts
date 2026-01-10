@@ -7,7 +7,7 @@ import { clearSearchResultsCache, clearProductNamesCache } from '../utils/search
 /**
  * Filter out local upload paths from product images.
  * Local paths like /uploads/... don't work in production (ephemeral storage).
- * Only keep external URLs (http://, https://).
+ * Keep: http/https URLs, data: URLs (base64)
  */
 function sanitizeProductImages(images: string[]): string[] {
   if (!images || !Array.isArray(images)) return [];
@@ -16,8 +16,13 @@ function sanitizeProductImages(images: string[]): string[] {
   if (!isProduction) return images;
 
   // In production, filter out local paths that don't work
+  // Allow external URLs and base64 data URLs
   return images.filter(url =>
-    url && (url.startsWith('http://') || url.startsWith('https://'))
+    url && (
+      url.startsWith('http://') ||
+      url.startsWith('https://') ||
+      url.startsWith('data:')
+    )
   );
 }
 

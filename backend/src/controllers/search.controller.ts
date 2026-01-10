@@ -6,11 +6,16 @@ import { sanitizeProductsPrices } from '../utils/priceHelper';
 /**
  * Filter out local upload paths from product images.
  * Local paths like /uploads/... don't work in production (ephemeral storage).
+ * Allow: http/https URLs, data: URLs (base64)
  */
 function sanitizeImages(images: string[]): string[] {
   if (!images || !Array.isArray(images)) return [];
   if (process.env.NODE_ENV !== 'production') return images;
-  return images.filter(url => url && (url.startsWith('http://') || url.startsWith('https://')));
+  return images.filter(url => url && (
+    url.startsWith('http://') ||
+    url.startsWith('https://') ||
+    url.startsWith('data:')
+  ));
 }
 
 // Extend Request to include user from auth middleware
