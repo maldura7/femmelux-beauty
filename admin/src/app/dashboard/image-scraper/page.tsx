@@ -77,9 +77,11 @@ export default function ImageScraperPage() {
   const [selectAllAcrossPages, setSelectAllAcrossPages] = useState(false);
   const [isBulkSearching, setIsBulkSearching] = useState(false);
   const [isBulkSaving, setIsBulkSaving] = useState(false);
+  const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [isFixingBrokenPaths, setIsFixingBrokenPaths] = useState(false);
   const [bulkProgress, setBulkProgress] = useState({ current: 0, total: 0 });
   const [bulkSaveProgress, setBulkSaveProgress] = useState({ current: 0, total: 0 });
+  const [autoSaveProgress, setAutoSaveProgress] = useState({ current: 0, total: 0, found: 0, saved: 0 });
 
   // Store searched products across all pages (separate from paginated products state)
   // Use both state (for UI updates) and ref (for reliable access in async functions)
@@ -593,6 +595,139 @@ export default function ImageScraperPage() {
     }
   };
 
+  // Auto-save: Select all products without images, search and save automatically
+  const handleAutoSaveAll = async () => {
+    const confirmStart = confirm(
+      'This will automatically:\n\n' +
+      '1. Find ALL products without images\n' +
+      '2. Search for images for each product\n' +
+      '3. Automatically save the best image found\n\n' +
+      'This process may take a while depending on the number of products.\n\n' +
+      'Continue?'
+    );
+    if (!confirmStart) return;
+
+    setIsAutoSaving(true);
+    setAutoSaveProgress({ current: 0, total: 0, found: 0, saved: 0 });
+
+    try {
+      // Step 1: Fetch all products without images
+      console.log('Fetching all products without images...');
+      const allProducts = await fetchAllProductIds();
+
+      if (allProducts.length === 0) {
+        alert('No products without images found!');
+        setIsAutoSaving(false);
+        return;
+      }
+
+      console.log(`Found ${allProducts.length} products without images`);
+      setAutoSaveProgress({ current: 0, total: allProducts.length, found: 0, saved: 0 });
+
+      let foundCount = 0;
+      let savedCount = 0;
+      let errorCount = 0;
+
+      // Step 2 & 3: Search and save in batches
+      const BATCH_SIZE = 3; // Smaller batch for search+save operations
+
+      for (let i = 0; i < allProducts.length; i += BATCH_SIZE) {
+        const batch = allProducts.slice(i, i + BATCH_SIZE);
+
+        // Process batch in parallel
+        const batchPromises = batch.map(async (product) => {
+          try {
+            // Search for images
+            const searchResponse = await api.post('/image-scraper/search', {
+              name: product.name,
+              brand: product.brand?.name,
+              sku: product.sku,
+              category: product.category,
+            });
+
+            const images = searchResponse.data.data?.results || [];
+
+            if (images.length === 0) {
+              console.log(`No images found for: ${product.name}`);
+              return { success: false, found: false, product };
+            }
+
+            // Found images - take the best one (first in array, highest quality)
+            const bestImage = images[0];
+            foundCount++;
+
+            // Save the image
+            try {
+              await api.post(`/image-scraper/assign/${product.id}`, {
+                imageUrl: bestImage.url,
+              });
+
+              savedCount++;
+              console.log(`Saved image for: ${product.name}`);
+
+              // Update product in current page if present
+              setProducts(prev => prev.map(p =>
+                p.id === product.id ? {
+                  ...p,
+                  saved: true,
+                  images: [bestImage.url],
+                  foundImages: images,
+                  selectedImage: bestImage,
+                } : p
+              ));
+
+              return { success: true, found: true, saved: true, product };
+            } catch (saveErr) {
+              console.error(`Failed to save image for ${product.name}:`, saveErr);
+              errorCount++;
+              return { success: false, found: true, saved: false, product };
+            }
+          } catch (searchErr) {
+            console.error(`Failed to search images for ${product.name}:`, searchErr);
+            return { success: false, found: false, product };
+          }
+        });
+
+        // Wait for batch to complete
+        await Promise.all(batchPromises);
+
+        // Update progress
+        const processed = Math.min(i + BATCH_SIZE, allProducts.length);
+        setAutoSaveProgress({
+          current: processed,
+          total: allProducts.length,
+          found: foundCount,
+          saved: savedCount,
+        });
+
+        // Delay between batches to avoid overwhelming the server
+        if (processed < allProducts.length) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+
+      // Complete
+      setIsAutoSaving(false);
+
+      const summary = `Auto-save completed!\n\n` +
+        `Total products processed: ${allProducts.length}\n` +
+        `Images found: ${foundCount}\n` +
+        `Images saved: ${savedCount}\n` +
+        `Errors: ${errorCount}\n` +
+        `No images available: ${allProducts.length - foundCount}`;
+
+      alert(summary);
+
+      // Refresh the product list
+      fetchProducts();
+
+    } catch (err: any) {
+      console.error('Auto-save failed:', err);
+      alert('Auto-save failed: ' + (err?.message || 'Unknown error'));
+      setIsAutoSaving(false);
+    }
+  };
+
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -779,9 +914,31 @@ export default function ImageScraperPage() {
           </div>
 
           <div className="flex items-center justify-end gap-2">
+            {/* Auto Save All - One-click solution */}
+            <button
+              onClick={handleAutoSaveAll}
+              disabled={isAutoSaving || isBulkSearching || isBulkSaving}
+              className="px-4 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 disabled:opacity-50 flex items-center gap-2"
+              title="Automatically find and save images for ALL products without images"
+            >
+              {isAutoSaving ? (
+                <>
+                  <ArrowPathIcon className="h-4 w-4 animate-spin" />
+                  Auto-saving {autoSaveProgress.current}/{autoSaveProgress.total} (saved: {autoSaveProgress.saved})
+                </>
+              ) : (
+                <>
+                  <PhotoIcon className="h-4 w-4" />
+                  Auto Save All
+                </>
+              )}
+            </button>
+
+            <div className="w-px h-6 bg-gray-300" />
+
             <button
               onClick={handleBulkSearch}
-              disabled={isBulkSearching || (selectedProducts.size === 0 && !selectAllAcrossPages)}
+              disabled={isBulkSearching || isAutoSaving || (selectedProducts.size === 0 && !selectAllAcrossPages)}
               className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
             >
               {isBulkSearching ? (
@@ -799,7 +956,7 @@ export default function ImageScraperPage() {
 
             <button
               onClick={handleBulkSave}
-              disabled={totalProductsToSave === 0 || isBulkSaving}
+              disabled={totalProductsToSave === 0 || isBulkSaving || isAutoSaving}
               className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center gap-2"
             >
               {isBulkSaving ? (
