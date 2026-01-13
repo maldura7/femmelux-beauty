@@ -5,7 +5,7 @@
   "devCommand": "npm run dev",
   "installCommand": "npm install",
   "env": {
-    "NEXT_PUBLIC_API_URL": "https://femmelux-backend.onrender.com/api"
+    "NEXT_PUBLIC_API_URL": "https://ai-raud.onrender.com/api"
   },
   "regions": ["iad1"],
   "headers": [

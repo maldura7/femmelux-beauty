@@ -6,7 +6,7 @@
 |---------|----------|-------------|
 | Admin Panel | Vercel | admin.femmelux.com / femmelux-admin.vercel.app |
 | Web Storefront | Vercel | femmelux.com / femmelux-web.vercel.app |
-| Backend API | Render | api.femmelux.com / femmelux-backend.onrender.com |
+| Backend API | Render | api.femmelux.com / ai-raud.onrender.com |
 | PostgreSQL | Render | (internal connection) |
 
 ## Estimated Monthly Costs
@@ -78,7 +78,7 @@ node -e "console.log(require('crypto').randomBytes(64).toString('base64'))"
 ### 1.6 Deploy
 1. Click "Create Web Service"
 2. Wait for the build to complete (first build takes ~5 min)
-3. Note your Render URL (e.g., `https://femmelux-backend.onrender.com`)
+3. Note your Render URL (e.g., `https://ai-raud.onrender.com`)
 
 ### 1.7 Seed Database (First Time Only)
 After successful deployment:
@@ -110,7 +110,7 @@ Click "Environment Variables" and add:
 
 | Key | Value |
 |-----|-------|
-| `NEXT_PUBLIC_API_URL` | `https://femmelux-backend.onrender.com/api` |
+| `NEXT_PUBLIC_API_URL` | `https://ai-raud.onrender.com/api` |
 | `NEXT_PUBLIC_SITE_NAME` | `FemmeLux Admin` |
 
 ### 2.5 Deploy
@@ -138,7 +138,7 @@ After deployment, note the URL (e.g., `femmelux-admin.vercel.app`)
 
 | Key | Value |
 |-----|-------|
-| `NEXT_PUBLIC_API_URL` | `https://femmelux-backend.onrender.com/api` |
+| `NEXT_PUBLIC_API_URL` | `https://ai-raud.onrender.com/api` |
 | `NEXT_PUBLIC_SITE_NAME` | `FemmeLux Beauty` |
 
 ### 3.4 Deploy
@@ -163,7 +163,7 @@ https://femmelux-admin.vercel.app,https://femmelux-web.vercel.app
 
 ### Test Backend API
 ```bash
-curl https://femmelux-backend.onrender.com/api/health
+curl https://ai-raud.onrender.com/api/health
 ```
 
 ### Test Admin Login
@@ -218,14 +218,14 @@ https://admin.femmelux.com,https://femmelux.com
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `NEXT_PUBLIC_API_URL` | Backend API URL with /api | `https://femmelux-backend.onrender.com/api` |
+| `NEXT_PUBLIC_API_URL` | Backend API URL with /api | `https://ai-raud.onrender.com/api` |
 | `NEXT_PUBLIC_SITE_NAME` | Site display name | `FemmeLux Admin` |
 
 ### Web Storefront (Vercel)
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `NEXT_PUBLIC_API_URL` | Backend API URL with /api | `https://femmelux-backend.onrender.com/api` |
+| `NEXT_PUBLIC_API_URL` | Backend API URL with /api | `https://ai-raud.onrender.com/api` |
 | `NEXT_PUBLIC_SITE_NAME` | Site display name | `FemmeLux Beauty` |
 
 ---
@@ -242,7 +242,7 @@ Use a free monitoring service to ping your API every 14 minutes:
 - UptimeRobot (free): https://uptimerobot.com
 - Cron-job.org (free): https://cron-job.org
 
-Set up a monitor to ping: `https://femmelux-backend.onrender.com/api/health`
+Set up a monitor to ping: `https://ai-raud.onrender.com/api/health`
 
 ### Upgrading to Paid
 If cold starts are an issue:

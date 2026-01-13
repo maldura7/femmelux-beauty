@@ -66,7 +66,23 @@
       "Bash(npx vercel:*)",
       "Bash(python -c:*)",
       "Bash(git restore:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(ls:*)",
+      "Bash(lsof:*)",
+      "Bash(/opt/homebrew/bin/node:*)",
+      "Bash(/opt/homebrew/bin/npm --version)",
+      "Bash(export PATH=\"/opt/homebrew/bin:$PATH\")",
+      "Bash(node --version:*)",
+      "Bash(npm:*)",
+      "Bash(brew services:*)",
+      "Bash(pkill:*)",
+      "Bash(render --version:*)",
+      "Bash(vercel whoami:*)",
+      "Bash(render whoami)",
+      "Bash(render --help:*)",
+      "Bash(render services:*)",
+      "Bash(export PATH=\"/opt/homebrew/bin:/usr/bin:$PATH\")",
+      "Bash(git merge:*)"
     ]
   }
 }
