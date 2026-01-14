@@ -25,6 +25,9 @@ dotenv.config();
 // Create Express application
 const app: Application = express();
 
+// Trust proxy - required for Railway/production behind reverse proxy
+app.set('trust proxy', 1);
+
 // ============================================
 // SECURITY MIDDLEWARE (Applied first)
 // ============================================
