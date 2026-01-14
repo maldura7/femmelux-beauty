@@ -3,41 +3,26 @@
 echo "Starting FemmeLux Backend..."
 echo "DATABASE_URL is set: $(if [ -n "$DATABASE_URL" ]; then echo 'yes'; else echo 'NO - THIS IS THE PROBLEM'; fi)"
 
-# Run database migrations in the background to not block server startup
-{
-  echo "Running database migrations in background..."
-  sleep 5  # Give the server time to start first
+# Use prisma from node_modules/.bin directly
+PRISMA_CMD="./node_modules/.bin/prisma"
 
-  MAX_RETRIES=10
-  RETRY_COUNT=0
+# Fallback to npx if direct path doesn't work
+if [ ! -f "$PRISMA_CMD" ]; then
+  PRISMA_CMD="npx prisma"
+fi
 
-  # Use prisma from node_modules/.bin directly
-  PRISMA_CMD="./node_modules/.bin/prisma"
+# Sync database schema with prisma schema (creates tables if missing)
+echo "Syncing database schema..."
+$PRISMA_CMD db push --accept-data-loss 2>&1 || {
+  echo "db push failed, retrying..."
+  sleep 3
+  $PRISMA_CMD db push --accept-data-loss 2>&1 || echo "Warning: db push failed"
+}
 
-  # Fallback to npx if direct path doesn't work
-  if [ ! -f "$PRISMA_CMD" ]; then
-    PRISMA_CMD="npx prisma"
-  fi
+# Run seed after migrations
+echo "Running database seed..."
+$PRISMA_CMD db seed 2>&1 || echo "Seed skipped or already run"
 
-  while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-    echo "Migration attempt $((RETRY_COUNT + 1))..."
-    if $PRISMA_CMD migrate deploy 2>&1; then
-      echo "Database migrations completed successfully!"
-      break
-    fi
-
-    RETRY_COUNT=$((RETRY_COUNT + 1))
-    echo "Migration attempt $RETRY_COUNT failed, retrying in 10 seconds..."
-    sleep 10
-  done
-
-  if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
-    echo "Warning: Database migrations failed after $MAX_RETRIES attempts"
-    echo "Trying db push as fallback..."
-    $PRISMA_CMD db push --accept-data-loss 2>&1 || echo "Warning: db push also failed"
-  fi
-} &
-
-# Start the server immediately so health checks pass
+# Start the server
 echo "Starting Express server on port ${PORT:-4000}..."
 exec node dist/server.js
