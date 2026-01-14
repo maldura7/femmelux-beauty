@@ -233,12 +233,14 @@ export default function BulkImagesPage() {
           const images = searchResponse.data.data?.results || [];
 
           if (images.length > 0) {
-            // Found images - save the best one
+            // Found images - send top 5 as fallbacks (backend will try each)
+            const topImages = images.slice(0, 5);
+            const imageUrls = topImages.map((img: { url: string }) => img.url);
             const bestImage = images[0];
 
             try {
               await api.post(`/image-scraper/assign/${product.id}`, {
-                imageUrl: bestImage.url,
+                imageUrls, // Send array of URLs for fallback support
               });
 
               foundCount++;

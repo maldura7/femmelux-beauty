@@ -686,43 +686,85 @@ export async function getProductsWithoutImagesCount(brandId?: string): Promise<n
  * This ensures images work on all devices (including mobile Safari)
  * by avoiding hotlink protection and CORS issues
  */
-async function downloadImageAsBase64(imageUrl: string): Promise<string | null> {
-  try {
-    const response = await axios.get(imageUrl, {
-      responseType: 'arraybuffer',
-      headers: {
-        'User-Agent': getRandomUserAgent(),
-        'Accept': 'image/*',
-      },
-      timeout: 30000,
-      maxContentLength: 10 * 1024 * 1024, // 10MB max
-    });
+async function downloadImageAsBase64(imageUrl: string, retries = 3): Promise<string | null> {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      // Add referer header to bypass some hotlink protection
+      const urlObj = new URL(imageUrl);
+      const referer = `${urlObj.protocol}//${urlObj.hostname}/`;
 
-    // Determine MIME type from content-type or URL
-    const contentType = response.headers['content-type'] || '';
-    let mimeType = 'image/jpeg';
+      const response = await axios.get(imageUrl, {
+        responseType: 'arraybuffer',
+        headers: {
+          'User-Agent': getRandomUserAgent(),
+          'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.9',
+          'Referer': referer,
+          'Origin': referer.slice(0, -1),
+        },
+        timeout: 60000, // Increased timeout to 60 seconds
+        maxContentLength: 10 * 1024 * 1024, // 10MB max
+        maxRedirects: 5,
+        validateStatus: (status) => status < 400,
+      });
 
-    if (contentType.includes('png')) {
-      mimeType = 'image/png';
-    } else if (contentType.includes('webp')) {
-      mimeType = 'image/webp';
-    } else if (contentType.includes('gif')) {
-      mimeType = 'image/gif';
-    } else if (imageUrl.match(/\.png(\?|$)/i)) {
-      mimeType = 'image/png';
-    } else if (imageUrl.match(/\.webp(\?|$)/i)) {
-      mimeType = 'image/webp';
-    } else if (imageUrl.match(/\.gif(\?|$)/i)) {
-      mimeType = 'image/gif';
+      // Check if we got actual image data
+      if (!response.data || response.data.length < 100) {
+        console.log(`Attempt ${attempt}: Empty or too small response from ${imageUrl}`);
+        if (attempt < retries) {
+          await delay(1000 * attempt);
+          continue;
+        }
+        return null;
+      }
+
+      // Determine MIME type from content-type or URL
+      const contentType = response.headers['content-type'] || '';
+      let mimeType = 'image/jpeg';
+
+      if (contentType.includes('png')) {
+        mimeType = 'image/png';
+      } else if (contentType.includes('webp')) {
+        mimeType = 'image/webp';
+      } else if (contentType.includes('gif')) {
+        mimeType = 'image/gif';
+      } else if (imageUrl.match(/\.png(\?|$)/i)) {
+        mimeType = 'image/png';
+      } else if (imageUrl.match(/\.webp(\?|$)/i)) {
+        mimeType = 'image/webp';
+      } else if (imageUrl.match(/\.gif(\?|$)/i)) {
+        mimeType = 'image/gif';
+      }
+
+      // Convert to base64
+      const base64 = Buffer.from(response.data).toString('base64');
+      const dataUrl = `data:${mimeType};base64,${base64}`;
+
+      // Verify the base64 is valid and not too small (likely an error image)
+      if (base64.length < 500) {
+        console.log(`Attempt ${attempt}: Base64 too small (${base64.length} chars), likely an error image`);
+        if (attempt < retries) {
+          await delay(1000 * attempt);
+          continue;
+        }
+        return null;
+      }
+
+      console.log(`Successfully downloaded image (${Math.round(base64.length / 1024)}KB) from ${imageUrl.substring(0, 80)}...`);
+      return dataUrl;
+    } catch (error: any) {
+      const errorMsg = error?.message || 'Unknown error';
+      console.log(`Attempt ${attempt}/${retries} failed for ${imageUrl.substring(0, 60)}...: ${errorMsg}`);
+
+      if (attempt < retries) {
+        // Wait before retrying, with exponential backoff
+        await delay(1000 * attempt);
+      }
     }
-
-    // Convert to base64
-    const base64 = Buffer.from(response.data).toString('base64');
-    return `data:${mimeType};base64,${base64}`;
-  } catch (error) {
-    console.error(`Failed to download image as base64 from ${imageUrl}:`, (error as Error).message);
-    return null;
   }
+
+  console.error(`All ${retries} attempts failed to download image from ${imageUrl}`);
+  return null;
 }
 
 /**
@@ -733,8 +775,10 @@ async function downloadImageAsBase64(imageUrl: string): Promise<string | null> {
  * 1. Avoid hotlink protection from source websites
  * 2. Work on all devices including mobile Safari
  * 3. Avoid CORS issues
+ *
+ * Accepts either a single imageUrl or an array of fallback URLs to try
  */
-export async function saveProductImage(productId: string, imageUrl: string): Promise<ScrapeResult> {
+export async function saveProductImage(productId: string, imageUrl: string | string[]): Promise<ScrapeResult> {
   try {
     // Get product details
     const product = await prisma.product.findUnique({
@@ -751,24 +795,41 @@ export async function saveProductImage(productId: string, imageUrl: string): Pro
       };
     }
 
-    // If already a data URL, use it directly
-    let finalImageUrl = imageUrl;
-    if (!imageUrl.startsWith('data:')) {
-      // Download and convert to base64
-      console.log(`Downloading image for ${product.name}...`);
-      const base64Url = await downloadImageAsBase64(imageUrl);
+    // Support both single URL and array of fallback URLs
+    const imageUrls = Array.isArray(imageUrl) ? imageUrl : [imageUrl];
 
-      if (!base64Url) {
-        return {
-          productId,
-          productName: product.name,
-          success: false,
-          error: 'Failed to download image',
-        };
+    let finalImageUrl: string | null = null;
+    let successfulUrl: string | null = null;
+
+    for (const url of imageUrls) {
+      // If already a data URL, use it directly
+      if (url.startsWith('data:')) {
+        finalImageUrl = url;
+        successfulUrl = 'data-url';
+        break;
       }
 
-      finalImageUrl = base64Url;
-      console.log(`Image converted to base64 for ${product.name}`);
+      // Try to download and convert to base64
+      console.log(`Attempting to download image for ${product.name} from: ${url.substring(0, 60)}...`);
+      const base64Url = await downloadImageAsBase64(url);
+
+      if (base64Url) {
+        finalImageUrl = base64Url;
+        successfulUrl = url;
+        console.log(`Successfully downloaded image for ${product.name}`);
+        break;
+      } else {
+        console.log(`Failed to download from ${url.substring(0, 60)}..., trying next URL if available`);
+      }
+    }
+
+    if (!finalImageUrl) {
+      return {
+        productId,
+        productName: product.name,
+        success: false,
+        error: `Failed to download image from ${imageUrls.length} URL(s)`,
+      };
     }
 
     // Store the base64 data URL
@@ -783,7 +844,7 @@ export async function saveProductImage(productId: string, imageUrl: string): Pro
       productId,
       productName: product.name,
       success: true,
-      imageUrl: finalImageUrl.substring(0, 100) + '...', // Truncate for logging
+      imageUrl: successfulUrl === 'data-url' ? 'data-url' : (successfulUrl?.substring(0, 80) + '...'),
       source: 'manual',
     };
   } catch (error) {

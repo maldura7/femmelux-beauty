@@ -58,19 +58,42 @@ export const searchImages = async (req: Request, res: Response): Promise<void> =
  * Find and assign image to a single product
  * POST /api/image-scraper/assign/:productId
  *
- * If imageUrl is provided in body, saves that URL directly.
- * Otherwise, searches for images automatically.
+ * Body can contain:
+ * - imageUrl: string - A single URL to save
+ * - imageUrls: string[] - An array of URLs to try (fallbacks)
+ *
+ * If neither is provided, searches for images automatically.
  */
 export const assignProductImage = async (req: Request, res: Response): Promise<void> => {
   try {
     const { productId } = req.params;
-    const { imageUrl } = req.body;
+    const { imageUrl, imageUrls } = req.body;
 
     if (!productId) {
       res.status(400).json({
         success: false,
         message: 'Product ID is required',
       });
+      return;
+    }
+
+    // If imageUrls array is provided, try each one until success
+    if (imageUrls && Array.isArray(imageUrls) && imageUrls.length > 0) {
+      const result = await saveProductImage(productId, imageUrls);
+
+      if (result.success) {
+        res.json({
+          success: true,
+          data: result,
+          message: 'Image saved successfully',
+        });
+      } else {
+        res.status(400).json({
+          success: false,
+          message: result.error,
+          data: result,
+        });
+      }
       return;
     }
 
