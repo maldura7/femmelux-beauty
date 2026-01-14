@@ -164,8 +164,8 @@ export async function getProductsWithoutImagesCount(filters?: {
     OR: [
       { images: { equals: [] } },
       { images: { equals: null } },
+      { images: { isEmpty: true } },
     ],
-    status: true,
   };
 
   if (filters?.brandId) {
@@ -203,8 +203,8 @@ export async function getProductsWithoutImages(options: {
     OR: [
       { images: { equals: [] } },
       { images: { equals: null } },
+      { images: { isEmpty: true } },
     ],
-    status: true,
   };
 
   if (brandId) {
@@ -267,8 +267,8 @@ export async function bulkAssignPlaceholderImages(options: {
     OR: [
       { images: { equals: [] } },
       { images: { equals: null } },
+      { images: { isEmpty: true } },
     ],
-    status: true,
   };
 
   if (brandId) {
