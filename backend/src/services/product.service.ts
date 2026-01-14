@@ -957,23 +957,41 @@ class ProductService {
     }
 
     // Step 2: Get all existing SKUs to avoid conflicts
-    const skus = products.map(p => p.sku);
+    // Normalize SKUs for comparison (trim whitespace, case-insensitive)
+    const normalizedSkus = products.map(p => p.sku.trim().toLowerCase());
     const existingProducts = await prisma.product.findMany({
-      where: { sku: { in: skus } },
+      where: {
+        sku: {
+          in: products.map(p => p.sku.trim()),
+          mode: 'insensitive'
+        }
+      },
       select: { sku: true },
     });
-    const existingSkus = new Set(existingProducts.map(p => p.sku));
+    const existingSkus = new Set(existingProducts.map(p => p.sku.toLowerCase().trim()));
+
+    // Also track SKUs we're adding in this batch to avoid duplicates within the batch
+    const batchSkus = new Set<string>();
 
     // Step 3: Prepare products for batch insert
     const productsToCreate: Prisma.ProductCreateManyInput[] = [];
     const slugsUsed = new Set<string>();
 
     for (const product of products) {
-      // Skip if SKU already exists
-      if (existingSkus.has(product.sku)) {
+      const normalizedSku = product.sku.trim().toLowerCase();
+
+      // Skip if SKU already exists in database
+      if (existingSkus.has(normalizedSku)) {
         skipped++;
         continue;
       }
+
+      // Skip if SKU is duplicate within this batch
+      if (batchSkus.has(normalizedSku)) {
+        skipped++;
+        continue;
+      }
+      batchSkus.add(normalizedSku);
 
       const brandId = brandMap.get(product.brandName.toLowerCase());
       if (!brandId) {
