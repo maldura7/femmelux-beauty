@@ -12,11 +12,12 @@ if [ ! -f "$PRISMA_CMD" ]; then
 fi
 
 # Sync database schema with prisma schema (creates tables if missing)
+# NOTE: Removed --accept-data-loss to prevent accidental data deletion
 echo "Syncing database schema..."
-$PRISMA_CMD db push --accept-data-loss 2>&1 || {
+$PRISMA_CMD db push 2>&1 || {
   echo "db push failed, retrying..."
   sleep 3
-  $PRISMA_CMD db push --accept-data-loss 2>&1 || echo "Warning: db push failed"
+  $PRISMA_CMD db push 2>&1 || echo "Warning: db push failed"
 }
 
 # Run seed after migrations
