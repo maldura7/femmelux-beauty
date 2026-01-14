@@ -1,5 +1,4 @@
-import { PrismaClient, Prisma } from '@prisma/client';
-import axios from 'axios';
+import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -161,11 +160,10 @@ export async function getProductsWithoutImagesCount(filters?: {
   brandId?: string;
   category?: string;
 }): Promise<number> {
-  const whereClause: Prisma.ProductWhereInput = {
+  const whereClause: Record<string, unknown> = {
     OR: [
-      { images: { equals: Prisma.DbNull } },
-      { images: { equals: Prisma.JsonNull } },
       { images: { equals: [] } },
+      { images: { equals: null } },
     ],
     status: true,
   };
@@ -201,11 +199,10 @@ export async function getProductsWithoutImages(options: {
 }> {
   const { limit = 100, offset = 0, brandId, category } = options;
 
-  const whereClause: Prisma.ProductWhereInput = {
+  const whereClause: Record<string, unknown> = {
     OR: [
-      { images: { equals: Prisma.DbNull } },
-      { images: { equals: Prisma.JsonNull } },
       { images: { equals: [] } },
+      { images: { equals: null } },
     ],
     status: true,
   };
@@ -266,11 +263,10 @@ export async function bulkAssignPlaceholderImages(options: {
   let skipped = 0;
 
   // Build where clause for products without images
-  const whereClause: Prisma.ProductWhereInput = {
+  const whereClause: Record<string, unknown> = {
     OR: [
-      { images: { equals: Prisma.DbNull } },
-      { images: { equals: Prisma.JsonNull } },
       { images: { equals: [] } },
+      { images: { equals: null } },
     ],
     status: true,
   };
@@ -458,7 +454,7 @@ export async function clearProductImages(options: {
 }): Promise<{ cleared: number }> {
   const { brandId, category, limit } = options;
 
-  const whereClause: Prisma.ProductWhereInput = {};
+  const whereClause: Record<string, unknown> = {};
 
   if (brandId) {
     whereClause.brandId = brandId;
@@ -468,29 +464,32 @@ export async function clearProductImages(options: {
     whereClause.category = category;
   }
 
-  // Get product IDs to clear
+  // Get product IDs to clear - find products that have images (non-empty array)
+  // We'll fetch all and filter in JS since Prisma array filtering is tricky
   const products = await prisma.product.findMany({
-    where: {
-      ...whereClause,
-      images: { not: { equals: [] } },
-    },
-    select: { id: true },
-    take: limit,
+    where: whereClause,
+    select: { id: true, images: true },
+    take: limit ? limit * 2 : undefined, // Fetch extra since we'll filter
   });
 
-  if (products.length === 0) {
+  // Filter to only products with images
+  const productsWithImages = products.filter(p =>
+    p.images && Array.isArray(p.images) && p.images.length > 0
+  ).slice(0, limit);
+
+  if (productsWithImages.length === 0) {
     return { cleared: 0 };
   }
 
   // Clear images
   await prisma.product.updateMany({
     where: {
-      id: { in: products.map(p => p.id) },
+      id: { in: productsWithImages.map(p => p.id) },
     },
     data: { images: [] },
   });
 
-  return { cleared: products.length };
+  return { cleared: productsWithImages.length };
 }
 
 export default {
