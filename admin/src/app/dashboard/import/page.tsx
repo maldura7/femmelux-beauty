@@ -299,7 +299,7 @@ export default function ImportPage() {
           setImportProgress({ ...progress });
 
           // Add batch results
-          batch.forEach((row, idx) => {
+          batch.forEach((row) => {
             results.push({
               success: true,
               rowNumber: row.rowNumber,
