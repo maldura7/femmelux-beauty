@@ -545,7 +545,7 @@ export default function BulkImagesPage() {
         <div className="flex flex-wrap gap-4">
           <button
             onClick={handleBulkSearch}
-            disabled={isSearching || noImageCount === 0}
+            disabled={isSearching || (noImageCount === 0 && products.length === 0)}
             className="px-6 py-3 bg-pink-600 text-white rounded-lg hover:bg-pink-700 disabled:opacity-50 flex items-center gap-2"
           >
             {isSearching ? (
