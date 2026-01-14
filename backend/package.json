@@ -8,9 +8,8 @@
   },
   "scripts": {
     "dev": "nodemon --exec ts-node -r tsconfig-paths/register src/server.ts",
-    "build": "prisma generate && prisma migrate deploy && tsc && tsc-alias",
-    "postbuild": "prisma db seed || echo 'Seed skipped or already run'",
-    "start": "node dist/server.js",
+    "build": "prisma generate && tsc && tsc-alias",
+    "start": "prisma migrate deploy && prisma db seed && node dist/server.js || node dist/server.js",
     "start:prod": "NODE_ENV=production node dist/server.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
