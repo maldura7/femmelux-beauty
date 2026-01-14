@@ -82,7 +82,18 @@
       "Bash(render --help:*)",
       "Bash(render services:*)",
       "Bash(export PATH=\"/opt/homebrew/bin:/usr/bin:$PATH\")",
-      "Bash(git merge:*)"
+      "Bash(git merge:*)",
+      "Bash(DATABASE_URL=\"postgresql://femmelux_db_user:oIyCrfV4B3bV8KENktLYDFOGx0BUMMg5@dpg-d5ikev95pdvs73c46tmg-a.oregon-postgres.render.com/femmelux_db\" npx prisma db seed:*)",
+      "Bash(/usr/local/bin/npx prisma db seed)",
+      "Bash(/opt/homebrew/bin/npx prisma db seed)",
+      "Bash(~/.nvm/versions/node/*/bin/npx)",
+      "Bash(prisma db seed:*)",
+      "Bash(export PATH=\"/opt/homebrew/bin:/usr/local/bin:$PATH\")",
+      "Bash(export NVM_DIR=\"$HOME/.nvm\")",
+      "Bash([ -s \"$NVM_DIR/nvm.sh\" ])",
+      "Bash(. \"$NVM_DIR/nvm.sh\")",
+      "Bash(/opt/homebrew/bin/npx tsc --noEmit)",
+      "Bash(export PATH=\"/usr/local/bin:/opt/homebrew/bin:$PATH\")"
     ]
   }
 }

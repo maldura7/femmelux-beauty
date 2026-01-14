@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { productController } from '../controllers';
+import { bulkImageController } from '../controllers/bulkImage.controller';
 import {
   authenticateToken,
   authorizeRoles,
@@ -94,6 +95,94 @@ router.post(
   authenticateToken,
   authorizeRoles('ADMIN'),
   productController.bulkImport
+);
+
+// ============================================
+// BULK IMAGE ROUTES
+// ============================================
+
+/**
+ * @route   GET /api/products/images/no-image-count
+ * @desc    Get count of products without images
+ * @access  Admin only
+ */
+router.get(
+  '/images/no-image-count',
+  authenticateToken,
+  authorizeRoles('ADMIN'),
+  bulkImageController.getNoImageCount
+);
+
+/**
+ * @route   GET /api/products/images/no-image
+ * @desc    Get products without images for preview
+ * @access  Admin only
+ */
+router.get(
+  '/images/no-image',
+  authenticateToken,
+  authorizeRoles('ADMIN'),
+  bulkImageController.getProductsWithoutImages
+);
+
+/**
+ * @route   GET /api/products/images/categories
+ * @desc    Get available placeholder image categories
+ * @access  Admin only
+ */
+router.get(
+  '/images/categories',
+  authenticateToken,
+  authorizeRoles('ADMIN'),
+  bulkImageController.getPlaceholderCategories
+);
+
+/**
+ * @route   POST /api/products/images/bulk-assign
+ * @desc    Bulk assign placeholder images to products without images
+ * @access  Admin only
+ */
+router.post(
+  '/images/bulk-assign',
+  authenticateToken,
+  authorizeRoles('ADMIN'),
+  bulkImageController.bulkAssignPlaceholders
+);
+
+/**
+ * @route   POST /api/products/images/assign
+ * @desc    Assign a specific image to a product
+ * @access  Admin only
+ */
+router.post(
+  '/images/assign',
+  authenticateToken,
+  authorizeRoles('ADMIN'),
+  bulkImageController.assignImage
+);
+
+/**
+ * @route   POST /api/products/images/bulk-assign-mapping
+ * @desc    Bulk assign images from a mapping (SKU/ID -> imageUrl)
+ * @access  Admin only
+ */
+router.post(
+  '/images/bulk-assign-mapping',
+  authenticateToken,
+  authorizeRoles('ADMIN'),
+  bulkImageController.bulkAssignFromMapping
+);
+
+/**
+ * @route   POST /api/products/images/clear
+ * @desc    Clear images from products (for testing/reset)
+ * @access  Admin only
+ */
+router.post(
+  '/images/clear',
+  authenticateToken,
+  authorizeRoles('ADMIN'),
+  bulkImageController.clearImages
 );
 
 /**

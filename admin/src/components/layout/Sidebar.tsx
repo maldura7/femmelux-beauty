@@ -18,6 +18,7 @@ import {
   EnvelopeIcon,
   ClipboardDocumentListIcon,
   PhotoIcon,
+  SparklesIcon,
 } from '@heroicons/react/24/outline';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
@@ -42,6 +43,7 @@ const navigation: NavigationItem[] = [
   { name: 'Messages', href: '/dashboard/messages', icon: EnvelopeIcon },
   { name: 'Import', href: '/dashboard/import', icon: DocumentArrowUpIcon },
   { name: 'Image Scraper', href: '/dashboard/image-scraper', icon: PhotoIcon },
+  { name: 'Bulk Images', href: '/dashboard/bulk-images', icon: SparklesIcon },
   { name: 'Analytics', href: '/dashboard/analytics', icon: ChartBarIcon },
   { name: 'Settings', href: '/dashboard/settings', icon: Cog6ToothIcon },
 ];
