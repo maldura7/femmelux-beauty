@@ -958,7 +958,6 @@ class ProductService {
 
     // Step 2: Get all existing SKUs to avoid conflicts
     // Normalize SKUs for comparison (trim whitespace, case-insensitive)
-    const normalizedSkus = products.map(p => p.sku.trim().toLowerCase());
     const existingProducts = await prisma.product.findMany({
       where: {
         sku: {
