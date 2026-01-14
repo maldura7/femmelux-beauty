@@ -85,6 +85,18 @@ router.patch(
 );
 
 /**
+ * @route   POST /api/products/bulk-import
+ * @desc    Bulk import products from CSV/spreadsheet data
+ * @access  Admin only
+ */
+router.post(
+  '/bulk-import',
+  authenticateToken,
+  authorizeRoles('ADMIN'),
+  productController.bulkImport
+);
+
+/**
  * @route   GET /api/products
  * @desc    Get all products with filters
  * @access  Public (admins/vendors can see inactive)

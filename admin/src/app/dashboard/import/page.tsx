@@ -13,22 +13,13 @@ import {
   TrashIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
-import axios, { AxiosError } from 'axios';
-import { createProduct, CreateProductData } from '@/lib/api/products.api';
-import { createBrand, getAllBrands, CreateBrandData } from '@/lib/api/brands.api';
-import type { Brand } from '@/types';
-
-interface ApiErrorResponse {
-  success: boolean;
-  message: string;
-  errors?: Record<string, string[]>;
-}
+import axios from 'axios';
+import { apiClient } from '@/lib/api/client';
 
 // Helper to extract detailed error message from API errors
 function extractErrorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
-    const axiosError = error as AxiosError<ApiErrorResponse>;
-    const data = axiosError.response?.data;
+    const data = error.response?.data;
 
     // Handle validation errors (Record<string, string[]> format)
     if (data?.errors && typeof data.errors === 'object') {
@@ -80,6 +71,28 @@ interface ImportResult {
   message: string;
 }
 
+interface BulkImportProgress {
+  totalBatches: number;
+  completedBatches: number;
+  totalProducts: number;
+  createdProducts: number;
+  skippedProducts: number;
+  errors: string[];
+}
+
+interface BulkImportResponse {
+  success: boolean;
+  message: string;
+  data: {
+    created: number;
+    skipped: number;
+    total: number;
+    brandStats: Record<string, number>;
+  };
+  errors?: string[];
+  hasMoreErrors?: boolean;
+}
+
 export default function ImportPage() {
   const [file, setFile] = useState<File | null>(null);
   const [parsedData, setParsedData] = useState<ImportRow[]>([]);
@@ -87,6 +100,7 @@ export default function ImportPage() {
   const [isImporting, setIsImporting] = useState(false);
   const [importResults, setImportResults] = useState<ImportResult[]>([]);
   const [showResults, setShowResults] = useState(false);
+  const [importProgress, setImportProgress] = useState<BulkImportProgress | null>(null);
 
   const validateRow = (row: Partial<ImportRow>, rowNumber: number): ImportRow => {
     const errors: string[] = [];
@@ -225,82 +239,110 @@ export default function ImportPage() {
     }
 
     setIsImporting(true);
+    setImportProgress(null);
     const results: ImportResult[] = [];
 
+    // Batch size - send 500 products per request for optimal performance
+    const BATCH_SIZE = 500;
+    const batches: ImportRow[][] = [];
+
+    for (let i = 0; i < validRows.length; i += BATCH_SIZE) {
+      batches.push(validRows.slice(i, i + BATCH_SIZE));
+    }
+
+    // Initialize progress
+    const progress: BulkImportProgress = {
+      totalBatches: batches.length,
+      completedBatches: 0,
+      totalProducts: validRows.length,
+      createdProducts: 0,
+      skippedProducts: 0,
+      errors: [],
+    };
+    setImportProgress(progress);
+
     try {
-      // Fetch existing brands
-      const brandsResponse = await getAllBrands({ limit: 1000 });
-      const existingBrands = new Map<string, Brand>();
-      brandsResponse.brands.forEach((brand) => {
-        existingBrands.set(brand.name.toLowerCase(), brand);
-      });
+      // Process batches sequentially
+      for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+        const batch = batches[batchIndex];
 
-      // Process each valid row
-      for (const row of validRows) {
+        // Transform rows to API format
+        const products = batch.map((row) => ({
+          name: row.productName,
+          brandName: row.brand,
+          description: row.description || '',
+          costPrice: row.costPrice || 0,
+          wholesalePrice: row.wholesalePrice,
+          price: row.retailPrice,
+          sku: row.sku || `SKU-${Date.now()}-${row.rowNumber}`,
+          images: row.images ? row.images.split(',').map((img) => img.trim()).filter(Boolean) : [],
+          quantity: row.stockQuantity,
+          category: row.category || undefined,
+        }));
+
         try {
-          // Check if brand exists, if not create it
-          let brandId: string;
-          const brandKey = row.brand.toLowerCase();
+          const response = await apiClient.post<BulkImportResponse>('/products/bulk-import', {
+            products,
+          });
 
-          if (existingBrands.has(brandKey)) {
-            brandId = existingBrands.get(brandKey)!.id;
-          } else {
-            // Create new brand
-            const newBrandData: CreateBrandData = {
-              name: row.brand,
-              minimumOrder: 0,
-              status: true,
-            };
-            const newBrand = await createBrand(newBrandData);
-            existingBrands.set(brandKey, newBrand);
-            brandId = newBrand.id;
+          const data = response.data;
+
+          // Update progress
+          progress.completedBatches = batchIndex + 1;
+          progress.createdProducts += data.data.created;
+          progress.skippedProducts += data.data.skipped;
+
+          if (data.errors && data.errors.length > 0) {
+            progress.errors.push(...data.errors.slice(0, 10)); // Limit errors stored
           }
 
-          // Create the product
-          const productData: CreateProductData = {
-            brandId,
-            name: row.productName,
-            description: row.description,
-            category: row.category || undefined,
-            costPrice: row.costPrice || 0,
-            retailPrice: row.retailPrice,
-            wholesalePrice: row.wholesalePrice,
-            sku: row.sku || `SKU-${Date.now()}-${row.rowNumber}`,
-            stockQuantity: row.stockQuantity,
-            images: row.images ? row.images.split(',').map((img) => img.trim()).filter(Boolean) : [],
-            status: row.status.toLowerCase() === 'active' || row.status.toLowerCase() === 'true',
-          };
+          setImportProgress({ ...progress });
 
-          await createProduct(productData);
-
-          results.push({
-            success: true,
-            rowNumber: row.rowNumber,
-            productName: row.productName,
-            message: 'Successfully imported',
+          // Add batch results
+          batch.forEach((row, idx) => {
+            results.push({
+              success: true,
+              rowNumber: row.rowNumber,
+              productName: row.productName,
+              message: 'Processed in batch ' + (batchIndex + 1),
+            });
           });
+
+          // Show progress toast for large imports
+          if (batches.length > 1) {
+            toast.success(`Batch ${batchIndex + 1}/${batches.length} complete: ${data.data.created} created`, {
+              duration: 2000,
+            });
+          }
         } catch (error) {
-          results.push({
-            success: false,
-            rowNumber: row.rowNumber,
-            productName: row.productName,
-            message: extractErrorMessage(error),
+          const errorMessage = extractErrorMessage(error);
+          progress.errors.push(`Batch ${batchIndex + 1} failed: ${errorMessage}`);
+          setImportProgress({ ...progress });
+
+          // Mark all items in failed batch as failed
+          batch.forEach((row) => {
+            results.push({
+              success: false,
+              rowNumber: row.rowNumber,
+              productName: row.productName,
+              message: `Batch failed: ${errorMessage}`,
+            });
           });
+
+          toast.error(`Batch ${batchIndex + 1} failed: ${errorMessage}`);
         }
       }
 
       setImportResults(results);
       setShowResults(true);
 
-      const successCount = results.filter((r) => r.success).length;
-      const failCount = results.filter((r) => !r.success).length;
-
-      if (failCount === 0) {
-        toast.success(`Successfully imported ${successCount} products!`);
-      } else if (successCount === 0) {
-        toast.error(`Failed to import all ${failCount} products`);
+      // Final summary
+      if (progress.errors.length === 0) {
+        toast.success(`Successfully imported ${progress.createdProducts} products!`);
       } else {
-        toast.success(`Imported ${successCount} products, ${failCount} failed`);
+        toast.success(
+          `Imported ${progress.createdProducts} products, ${progress.skippedProducts} skipped, ${progress.errors.length} errors`
+        );
       }
     } catch (error) {
       toast.error('Import failed. Please try again.');
@@ -315,6 +357,7 @@ export default function ImportPage() {
     setParsedData([]);
     setImportResults([]);
     setShowResults(false);
+    setImportProgress(null);
   };
 
   const downloadTemplate = () => {
@@ -493,10 +536,37 @@ export default function ImportPage() {
             )}
           </div>
 
+          {/* Progress Display */}
+          {importProgress && isImporting && (
+            <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <h3 className="font-semibold text-blue-800 mb-3">Import Progress</h3>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm text-blue-700">
+                  <span>Batch {importProgress.completedBatches} of {importProgress.totalBatches}</span>
+                  <span>{Math.round((importProgress.completedBatches / importProgress.totalBatches) * 100)}%</span>
+                </div>
+                <div className="w-full bg-blue-200 rounded-full h-3">
+                  <div
+                    className="bg-blue-600 h-3 rounded-full transition-all duration-300"
+                    style={{ width: `${(importProgress.completedBatches / importProgress.totalBatches) * 100}%` }}
+                  />
+                </div>
+                <div className="flex gap-4 text-sm mt-2">
+                  <span className="text-green-600">Created: {importProgress.createdProducts}</span>
+                  <span className="text-yellow-600">Skipped: {importProgress.skippedProducts}</span>
+                  {importProgress.errors.length > 0 && (
+                    <span className="text-red-600">Errors: {importProgress.errors.length}</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="mt-6 flex items-center justify-end gap-3 pt-4 border-t">
             <button
               onClick={clearData}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              disabled={isImporting}
+              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
             >
               Cancel
             </button>
@@ -508,7 +578,7 @@ export default function ImportPage() {
               {isImporting ? (
                 <>
                   <span className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></span>
-                  Importing...
+                  Importing... {importProgress ? `(${importProgress.completedBatches}/${importProgress.totalBatches})` : ''}
                 </>
               ) : (
                 <>
@@ -522,34 +592,57 @@ export default function ImportPage() {
       )}
 
       {/* Import Results */}
-      {showResults && importResults.length > 0 && (
+      {showResults && importProgress && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <h2 className="text-lg font-semibold text-secondary-800 mb-4">Import Results</h2>
 
-          <div className="space-y-2 max-h-96 overflow-y-auto">
-            {importResults.map((result, index) => (
-              <div
-                key={index}
-                className={`flex items-center gap-3 p-3 rounded-lg ${
-                  result.success ? 'bg-green-50' : 'bg-red-50'
-                }`}
-              >
-                {result.success ? (
-                  <CheckCircleIcon className="h-5 w-5 text-green-500 flex-shrink-0" />
-                ) : (
-                  <XCircleIcon className="h-5 w-5 text-red-500 flex-shrink-0" />
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className={`font-medium ${result.success ? 'text-green-700' : 'text-red-700'}`}>
-                    Row {result.rowNumber}: {result.productName}
-                  </p>
-                  <p className={`text-sm ${result.success ? 'text-green-600' : 'text-red-600'}`}>
-                    {result.message}
-                  </p>
-                </div>
-              </div>
-            ))}
+          {/* Summary Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div className="bg-gray-50 rounded-lg p-4 text-center">
+              <p className="text-2xl font-bold text-gray-800">{importProgress.totalProducts}</p>
+              <p className="text-sm text-gray-600">Total Processed</p>
+            </div>
+            <div className="bg-green-50 rounded-lg p-4 text-center">
+              <p className="text-2xl font-bold text-green-600">{importProgress.createdProducts}</p>
+              <p className="text-sm text-green-700">Created</p>
+            </div>
+            <div className="bg-yellow-50 rounded-lg p-4 text-center">
+              <p className="text-2xl font-bold text-yellow-600">{importProgress.skippedProducts}</p>
+              <p className="text-sm text-yellow-700">Skipped (duplicates)</p>
+            </div>
+            <div className="bg-red-50 rounded-lg p-4 text-center">
+              <p className="text-2xl font-bold text-red-600">{importProgress.errors.length}</p>
+              <p className="text-sm text-red-700">Errors</p>
+            </div>
           </div>
+
+          {/* Error Details */}
+          {importProgress.errors.length > 0 && (
+            <div className="mt-4">
+              <h3 className="font-medium text-red-700 mb-2">Errors:</h3>
+              <div className="space-y-2 max-h-48 overflow-y-auto bg-red-50 rounded-lg p-3">
+                {importProgress.errors.map((error, index) => (
+                  <div key={index} className="flex items-start gap-2 text-sm text-red-600">
+                    <XCircleIcon className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                    <span>{error}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Success Message */}
+          {importProgress.errors.length === 0 && importProgress.createdProducts > 0 && (
+            <div className="bg-green-50 rounded-lg p-4 flex items-center gap-3">
+              <CheckCircleIcon className="h-8 w-8 text-green-500" />
+              <div>
+                <p className="font-semibold text-green-700">Import Completed Successfully!</p>
+                <p className="text-sm text-green-600">
+                  All {importProgress.createdProducts} products have been imported.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

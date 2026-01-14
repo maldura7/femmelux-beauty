@@ -105,6 +105,29 @@ interface InventoryUpdateItem {
   lowStockThreshold?: number;
 }
 
+// Bulk import product input
+interface BulkImportProductInput {
+  name: string;
+  brandName: string;
+  description?: string;
+  costPrice?: number;
+  wholesalePrice: number;
+  price: number;
+  sku: string;
+  images?: string[];
+  quantity?: number;
+  category?: string;
+}
+
+// Bulk import result
+interface BulkImportResult {
+  success: boolean;
+  created: number;
+  skipped: number;
+  errors: string[];
+  brandStats: { [brandName: string]: number };
+}
+
 // Stock update item
 interface StockUpdateItem {
   productId: string;
@@ -887,6 +910,178 @@ class ProductService {
       retailPrice: Number(p.price),
       status: p.status ? 'Active' : 'Inactive',
     }));
+  }
+
+  /**
+   * Bulk import products - efficient batch insert
+   * Handles brand creation/lookup and uses createMany for performance
+   */
+  async bulkImportProducts(products: BulkImportProductInput[]): Promise<BulkImportResult> {
+    const errors: string[] = [];
+    let created = 0;
+    let skipped = 0;
+    const brandStats: { [brandName: string]: number } = {};
+
+    // Step 1: Get or create all unique brands
+    const uniqueBrandNames = [...new Set(products.map(p => p.brandName.trim()))];
+    const brandMap = new Map<string, string>(); // brandName -> brandId
+
+    for (const brandName of uniqueBrandNames) {
+      try {
+        // Check if brand exists
+        let brand = await prisma.brand.findFirst({
+          where: {
+            name: { equals: brandName, mode: 'insensitive' }
+          },
+        });
+
+        if (!brand) {
+          // Create the brand
+          const slug = await this.ensureUniqueBrandSlug(this.generateSlug(brandName));
+          brand = await prisma.brand.create({
+            data: {
+              name: brandName,
+              slug,
+              description: `Products from ${brandName}`,
+              minimumOrder: 0,
+              status: true,
+            },
+          });
+        }
+
+        brandMap.set(brandName.toLowerCase(), brand.id);
+        brandStats[brandName] = 0;
+      } catch (error) {
+        errors.push(`Failed to create/find brand "${brandName}": ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+
+    // Step 2: Get all existing SKUs to avoid conflicts
+    const skus = products.map(p => p.sku);
+    const existingProducts = await prisma.product.findMany({
+      where: { sku: { in: skus } },
+      select: { sku: true },
+    });
+    const existingSkus = new Set(existingProducts.map(p => p.sku));
+
+    // Step 3: Prepare products for batch insert
+    const productsToCreate: Prisma.ProductCreateManyInput[] = [];
+    const slugsUsed = new Set<string>();
+
+    for (const product of products) {
+      // Skip if SKU already exists
+      if (existingSkus.has(product.sku)) {
+        skipped++;
+        continue;
+      }
+
+      const brandId = brandMap.get(product.brandName.toLowerCase());
+      if (!brandId) {
+        errors.push(`SKU ${product.sku}: Brand "${product.brandName}" not found`);
+        skipped++;
+        continue;
+      }
+
+      // Generate unique slug
+      let baseSlug = this.generateSlug(product.name);
+      let slug = baseSlug;
+      let counter = 1;
+
+      // Ensure slug is unique within this batch
+      while (slugsUsed.has(slug)) {
+        slug = `${baseSlug}-${counter}`;
+        counter++;
+      }
+      slugsUsed.add(slug);
+
+      productsToCreate.push({
+        brandId,
+        name: product.name,
+        slug,
+        description: product.description || '',
+        costPrice: product.costPrice || 0,
+        wholesalePrice: product.wholesalePrice,
+        price: product.price,
+        sku: product.sku,
+        images: product.images || [],
+        quantity: product.quantity || 0,
+        lowStockThreshold: 10,
+        category: product.category || null,
+        status: true,
+      });
+
+      brandStats[product.brandName] = (brandStats[product.brandName] || 0) + 1;
+    }
+
+    // Step 4: Check for duplicate slugs in database and update as needed
+    if (productsToCreate.length > 0) {
+      const slugsToCheck = productsToCreate.map(p => p.slug as string);
+      const existingSlugs = await prisma.product.findMany({
+        where: { slug: { in: slugsToCheck } },
+        select: { slug: true },
+      });
+      const existingSlugSet = new Set(existingSlugs.map(p => p.slug));
+
+      // Update slugs that conflict with existing ones
+      for (const product of productsToCreate) {
+        if (existingSlugSet.has(product.slug as string)) {
+          let newSlug = product.slug as string;
+          let counter = 1;
+          while (existingSlugSet.has(newSlug) || slugsUsed.has(newSlug)) {
+            newSlug = `${product.slug}-${counter}`;
+            counter++;
+          }
+          product.slug = newSlug;
+          slugsUsed.add(newSlug);
+        }
+      }
+    }
+
+    // Step 5: Batch insert products
+    if (productsToCreate.length > 0) {
+      try {
+        const result = await prisma.product.createMany({
+          data: productsToCreate,
+          skipDuplicates: true, // Skip any remaining duplicates
+        });
+        created = result.count;
+      } catch (error) {
+        errors.push(`Batch insert failed: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+
+    // Clear search caches after bulk import
+    clearSearchResultsCache().catch(console.error);
+    clearProductNamesCache().catch(console.error);
+
+    return {
+      success: errors.length === 0,
+      created,
+      skipped,
+      errors,
+      brandStats,
+    };
+  }
+
+  /**
+   * Ensure brand slug is unique
+   */
+  private async ensureUniqueBrandSlug(slug: string): Promise<string> {
+    let uniqueSlug = slug;
+    let counter = 1;
+
+    while (true) {
+      const existing = await prisma.brand.findUnique({
+        where: { slug: uniqueSlug },
+      });
+
+      if (!existing) {
+        return uniqueSlug;
+      }
+
+      uniqueSlug = `${slug}-${counter}`;
+      counter++;
+    }
   }
 }
 

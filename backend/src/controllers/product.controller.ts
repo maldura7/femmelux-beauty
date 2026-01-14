@@ -550,6 +550,107 @@ class ProductController {
       count: products.length,
     });
   });
+
+  /**
+   * Bulk import products
+   * POST /api/products/bulk-import
+   * Admin only
+   * Accepts an array of products and creates them efficiently using batch insert
+   */
+  bulkImport = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const { products } = req.body;
+
+    if (!products || !Array.isArray(products) || products.length === 0) {
+      throw ApiError.badRequest('Products array is required');
+    }
+
+    // Validate product structure
+    const validProducts: Array<{
+      name: string;
+      brandName: string;
+      description?: string;
+      costPrice?: number;
+      wholesalePrice: number;
+      price: number;
+      sku: string;
+      images?: string[];
+      quantity?: number;
+      category?: string;
+    }> = [];
+
+    const validationErrors: string[] = [];
+
+    for (let i = 0; i < products.length; i++) {
+      const product = products[i];
+      const rowNum = i + 1;
+
+      // Required fields
+      if (!product.name) {
+        validationErrors.push(`Row ${rowNum}: Missing product name`);
+        continue;
+      }
+      if (!product.brandName) {
+        validationErrors.push(`Row ${rowNum}: Missing brand name`);
+        continue;
+      }
+      if (!product.sku) {
+        validationErrors.push(`Row ${rowNum}: Missing SKU`);
+        continue;
+      }
+      if (product.wholesalePrice === undefined || product.wholesalePrice === null) {
+        validationErrors.push(`Row ${rowNum}: Missing wholesale price`);
+        continue;
+      }
+      if (product.price === undefined || product.price === null) {
+        validationErrors.push(`Row ${rowNum}: Missing retail price`);
+        continue;
+      }
+
+      validProducts.push({
+        name: String(product.name).trim(),
+        brandName: String(product.brandName).trim(),
+        description: product.description ? String(product.description).trim() : undefined,
+        costPrice: product.costPrice !== undefined ? parseFloat(product.costPrice) : undefined,
+        wholesalePrice: parseFloat(product.wholesalePrice),
+        price: parseFloat(product.price),
+        sku: String(product.sku).trim(),
+        images: Array.isArray(product.images) ? product.images : [],
+        quantity: product.quantity !== undefined ? parseInt(product.quantity) : 0,
+        category: product.category ? String(product.category).trim() : undefined,
+      });
+    }
+
+    // If all products failed validation
+    if (validProducts.length === 0) {
+      res.status(400).json({
+        success: false,
+        message: 'No valid products to import',
+        errors: validationErrors,
+      });
+      return;
+    }
+
+    // Process the import
+    const result = await productService.bulkImportProducts(validProducts);
+
+    // Combine validation errors with import errors
+    const allErrors = [...validationErrors, ...result.errors];
+
+    res.status(result.success ? 200 : 207).json({
+      success: result.success,
+      message: result.success
+        ? `Successfully imported ${result.created} products`
+        : `Imported ${result.created} products with ${allErrors.length} issues`,
+      data: {
+        created: result.created,
+        skipped: result.skipped,
+        total: products.length,
+        brandStats: result.brandStats,
+      },
+      errors: allErrors.slice(0, 50), // Limit errors returned to first 50
+      hasMoreErrors: allErrors.length > 50,
+    });
+  });
 }
 
 export const productController = new ProductController();
