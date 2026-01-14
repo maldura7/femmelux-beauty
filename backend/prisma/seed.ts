@@ -6,7 +6,25 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Starting database seeding...\n');
 
-  // Clear existing data
+  // SAFETY CHECK: Don't delete data if products already exist
+  // This prevents accidental data loss on production
+  const existingProducts = await prisma.product.count();
+  const existingBrands = await prisma.brand.count();
+
+  if (existingProducts > 20 || existingBrands > 10) {
+    console.log('⚠️  DATABASE ALREADY HAS DATA!');
+    console.log(`   Found ${existingProducts} products and ${existingBrands} brands`);
+    console.log('   Skipping seed to prevent data loss.');
+    console.log('   To force seed, delete data manually first or set FORCE_SEED=true');
+
+    if (process.env.FORCE_SEED !== 'true') {
+      console.log('\n✅ Seed skipped - existing data preserved');
+      return;
+    }
+    console.log('\n⚠️  FORCE_SEED=true detected, proceeding with data deletion...');
+  }
+
+  // Clear existing data (only runs if database is empty or FORCE_SEED=true)
   console.log('🗑️  Clearing existing data...');
   await prisma.orderItem.deleteMany();
   await prisma.order.deleteMany();

@@ -3,27 +3,17 @@
 echo "Starting FemmeLux Backend..."
 echo "DATABASE_URL is set: $(if [ -n "$DATABASE_URL" ]; then echo 'yes'; else echo 'NO - THIS IS THE PROBLEM'; fi)"
 
-# Use prisma from node_modules/.bin directly
-PRISMA_CMD="./node_modules/.bin/prisma"
+# IMPORTANT: We do NOT run prisma db push or any schema changes on startup
+# This was causing data loss on every deployment!
+#
+# Database schema changes should be done manually:
+# 1. Make changes to prisma/schema.prisma
+# 2. Run: npx prisma migrate dev --name "description_of_change"
+# 3. Commit the migration files
+# 4. Deploy - migrations will be applied via prisma migrate deploy
+#
+# For Railway: Set up a one-time migration command or run manually
 
-# Fallback to npx if direct path doesn't work
-if [ ! -f "$PRISMA_CMD" ]; then
-  PRISMA_CMD="npx prisma"
-fi
-
-# Sync database schema with prisma schema (creates tables if missing)
-# NOTE: Removed --accept-data-loss to prevent accidental data deletion
-echo "Syncing database schema..."
-$PRISMA_CMD db push 2>&1 || {
-  echo "db push failed, retrying..."
-  sleep 3
-  $PRISMA_CMD db push 2>&1 || echo "Warning: db push failed"
-}
-
-# Run seed after migrations
-echo "Running database seed..."
-$PRISMA_CMD db seed 2>&1 || echo "Seed skipped or already run"
-
-# Start the server
+# Start the server directly
 echo "Starting Express server on port ${PORT:-4000}..."
 exec node dist/server.js
