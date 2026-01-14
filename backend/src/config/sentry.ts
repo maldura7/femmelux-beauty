@@ -1,11 +1,10 @@
 import * as Sentry from '@sentry/node';
-import { Express } from 'express';
 
 /**
  * Initialize Sentry error monitoring
  * Only initializes if SENTRY_DSN is set
  */
-export function initSentry(app: Express): void {
+export function initSentry(): void {
   const dsn = process.env.SENTRY_DSN;
 
   if (!dsn) {
@@ -50,7 +49,7 @@ export function initSentry(app: Express): void {
  * Sentry error handler middleware
  * Must be added AFTER all routes
  */
-export function sentryErrorHandler() {
+export function sentryErrorHandler(): ReturnType<typeof Sentry.expressErrorHandler> {
   return Sentry.expressErrorHandler();
 }
 

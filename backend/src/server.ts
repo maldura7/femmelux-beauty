@@ -27,7 +27,7 @@ import {
 const app: Application = express();
 
 // Initialize Sentry BEFORE other middleware
-initSentry(app);
+initSentry();
 
 // Trust proxy - required for Railway/production behind reverse proxy
 app.set('trust proxy', 1);
