@@ -7,8 +7,12 @@ import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
 
+// Load environment variables FIRST
+dotenv.config();
+
 import { config } from './config';
 import { connectDatabase, disconnectDatabase } from './config/database';
+import { initSentry, sentryErrorHandler, captureException } from './config/sentry';
 import routes from './routes';
 import { errorHandler, notFoundHandler } from './middleware';
 import {
@@ -19,11 +23,11 @@ import {
   customSecurityHeaders,
 } from './middleware/security.middleware';
 
-// Load environment variables
-dotenv.config();
-
 // Create Express application
 const app: Application = express();
+
+// Initialize Sentry BEFORE other middleware
+initSentry(app);
 
 // Trust proxy - required for Railway/production behind reverse proxy
 app.set('trust proxy', 1);
@@ -155,6 +159,9 @@ if (process.env.NODE_ENV === 'production') {
 // 404 handler for undefined routes
 app.use(notFoundHandler);
 
+// Sentry error handler (must be before our error handler)
+app.use(sentryErrorHandler());
+
 // Global error handler
 app.use(errorHandler);
 
@@ -234,12 +241,16 @@ const startServer = async (): Promise<void> => {
 // Handle uncaught exceptions
 process.on('uncaughtException', (error) => {
   console.error('Uncaught Exception:', error);
+  captureException(error, { type: 'uncaughtException' });
   process.exit(1);
 });
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  if (reason instanceof Error) {
+    captureException(reason, { type: 'unhandledRejection' });
+  }
   process.exit(1);
 });
 

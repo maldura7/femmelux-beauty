@@ -30,9 +30,11 @@
   },
   "dependencies": {
     "@prisma/client": "^5.8.0",
+    "@sentry/node": "^8.0.0",
     "axios": "^1.13.2",
     "bcryptjs": "^2.4.3",
     "cheerio": "^1.1.2",
+    "cloudinary": "^2.0.0",
     "cors": "^2.8.5",
     "date-fns": "^3.6.0",
     "dotenv": "^16.3.1",

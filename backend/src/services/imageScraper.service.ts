@@ -769,16 +769,18 @@ async function downloadImageAsBase64(imageUrl: string, retries = 3): Promise<str
 
 /**
  * Save a specific image URL to a product
- * This function is used when the admin manually selects an image from search results
  *
- * The image is downloaded and converted to base64 data URL to:
- * 1. Avoid hotlink protection from source websites
- * 2. Work on all devices including mobile Safari
- * 3. Avoid CORS issues
+ * STORAGE STRATEGY:
+ * - If Cloudinary is configured: Upload to Cloudinary CDN (recommended for production)
+ * - If Cloudinary not configured: Fall back to base64 storage (development only)
  *
  * Accepts either a single imageUrl or an array of fallback URLs to try
  */
 export async function saveProductImage(productId: string, imageUrl: string | string[]): Promise<ScrapeResult> {
+  // Lazy import to avoid circular dependencies
+  const cloudinaryService = await import('./cloudinary.service');
+  const useCloudinary = cloudinaryService.isCloudinaryConfigured();
+
   try {
     // Get product details
     const product = await prisma.product.findUnique({
@@ -802,24 +804,42 @@ export async function saveProductImage(productId: string, imageUrl: string | str
     let successfulUrl: string | null = null;
 
     for (const url of imageUrls) {
-      // If already a data URL, use it directly
-      if (url.startsWith('data:')) {
-        finalImageUrl = url;
-        successfulUrl = 'data-url';
-        break;
-      }
+      console.log(`Attempting to process image for ${product.name} from: ${url.substring(0, 60)}...`);
 
-      // Try to download and convert to base64
-      console.log(`Attempting to download image for ${product.name} from: ${url.substring(0, 60)}...`);
-      const base64Url = await downloadImageAsBase64(url);
+      if (useCloudinary) {
+        // PRODUCTION: Upload to Cloudinary CDN
+        const result = await cloudinaryService.uploadFromUrl(url, {
+          folder: 'femmelux/products',
+          publicId: `product-${productId}`,
+          tags: [product.name.toLowerCase().replace(/[^a-z0-9]/g, '-').substring(0, 50)],
+        });
 
-      if (base64Url) {
-        finalImageUrl = base64Url;
-        successfulUrl = url;
-        console.log(`Successfully downloaded image for ${product.name}`);
-        break;
+        if (result.success && result.url) {
+          finalImageUrl = result.url;
+          successfulUrl = url;
+          console.log(`Successfully uploaded to Cloudinary for ${product.name}`);
+          break;
+        } else {
+          console.log(`Cloudinary upload failed: ${result.error}, trying next URL if available`);
+        }
       } else {
-        console.log(`Failed to download from ${url.substring(0, 60)}..., trying next URL if available`);
+        // DEVELOPMENT FALLBACK: Download and store as base64
+        // Note: This is not recommended for production due to database bloat
+        if (url.startsWith('data:')) {
+          finalImageUrl = url;
+          successfulUrl = 'data-url';
+          break;
+        }
+
+        const base64Url = await downloadImageAsBase64(url);
+        if (base64Url) {
+          finalImageUrl = base64Url;
+          successfulUrl = url;
+          console.log(`Successfully downloaded image for ${product.name} (base64 fallback)`);
+          break;
+        } else {
+          console.log(`Failed to download from ${url.substring(0, 60)}..., trying next URL if available`);
+        }
       }
     }
 
@@ -828,11 +848,11 @@ export async function saveProductImage(productId: string, imageUrl: string | str
         productId,
         productName: product.name,
         success: false,
-        error: `Failed to download image from ${imageUrls.length} URL(s)`,
+        error: `Failed to process image from ${imageUrls.length} URL(s)`,
       };
     }
 
-    // Store the base64 data URL
+    // Store the image URL (Cloudinary URL or base64)
     await prisma.product.update({
       where: { id: productId },
       data: {
@@ -844,8 +864,8 @@ export async function saveProductImage(productId: string, imageUrl: string | str
       productId,
       productName: product.name,
       success: true,
-      imageUrl: successfulUrl === 'data-url' ? 'data-url' : (successfulUrl?.substring(0, 80) + '...'),
-      source: 'manual',
+      imageUrl: useCloudinary ? finalImageUrl : (successfulUrl === 'data-url' ? 'data-url' : (successfulUrl?.substring(0, 80) + '...')),
+      source: useCloudinary ? 'cloudinary' : 'base64',
     };
   } catch (error) {
     return {
