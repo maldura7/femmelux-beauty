@@ -6,7 +6,10 @@ import {
   getProductsWithoutImagesCount,
   saveProductImage,
   fixBrokenImagePaths,
+  getProductImageHistory,
+  restoreImageFromHistory,
 } from '../services/imageScraper.service';
+import * as jobService from '../services/imageScraperJob.service';
 
 // ============================================
 // IMAGE SCRAPER CONTROLLER
@@ -235,10 +238,281 @@ export const fixBrokenPaths = async (_req: Request, res: Response): Promise<void
   }
 };
 
+// ============================================
+// BACKGROUND JOB HANDLERS
+// ============================================
+
+interface AuthenticatedRequest extends Request {
+  user?: {
+    id: string;
+    role: string;
+  };
+}
+
+/**
+ * Create a new background image scraping job
+ * POST /api/image-scraper/jobs
+ */
+export const createBackgroundJob = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const { brandId, categoryId, limit = 100 } = req.body;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        message: 'User not authenticated',
+      });
+      return;
+    }
+
+    // Create the job
+    const jobId = await jobService.createJob({
+      brandId,
+      categoryId,
+      limit: Math.min(Math.max(1, limit), 500), // Cap at 500
+      createdBy: userId,
+    });
+
+    // Start the job in the background
+    await jobService.startJob(jobId);
+
+    // Get initial status
+    const status = await jobService.getJobStatus(jobId);
+
+    res.json({
+      success: true,
+      data: status,
+      message: 'Background job started successfully',
+    });
+  } catch (error) {
+    console.error('Create job error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create background job',
+      error: (error as Error).message,
+    });
+  }
+};
+
+/**
+ * Get status of a specific job
+ * GET /api/image-scraper/jobs/:jobId
+ */
+export const getJobStatus = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { jobId } = req.params;
+
+    const status = await jobService.getJobStatus(jobId);
+
+    if (!status) {
+      res.status(404).json({
+        success: false,
+        message: 'Job not found',
+      });
+      return;
+    }
+
+    res.json({
+      success: true,
+      data: status,
+    });
+  } catch (error) {
+    console.error('Get job status error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get job status',
+      error: (error as Error).message,
+    });
+  }
+};
+
+/**
+ * Get list of all jobs
+ * GET /api/image-scraper/jobs
+ */
+export const getJobList = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { status, limit = 20, offset = 0 } = req.query;
+
+    const result = await jobService.getJobList({
+      status: status as any,
+      limit: Number(limit),
+      offset: Number(offset),
+    });
+
+    res.json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    console.error('Get job list error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get job list',
+      error: (error as Error).message,
+    });
+  }
+};
+
+/**
+ * Get detailed results of a completed job
+ * GET /api/image-scraper/jobs/:jobId/results
+ */
+export const getJobResults = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { jobId } = req.params;
+
+    const results = await jobService.getJobResults(jobId);
+
+    if (!results) {
+      res.status(404).json({
+        success: false,
+        message: 'Job not found',
+      });
+      return;
+    }
+
+    res.json({
+      success: true,
+      data: results,
+    });
+  } catch (error) {
+    console.error('Get job results error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get job results',
+      error: (error as Error).message,
+    });
+  }
+};
+
+/**
+ * Cancel a running or pending job
+ * DELETE /api/image-scraper/jobs/:jobId
+ */
+export const cancelBackgroundJob = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { jobId } = req.params;
+
+    const cancelled = await jobService.cancelJob(jobId);
+
+    if (cancelled) {
+      res.json({
+        success: true,
+        message: 'Job cancelled successfully',
+      });
+    } else {
+      res.status(400).json({
+        success: false,
+        message: 'Could not cancel job. It may have already completed.',
+      });
+    }
+  } catch (error) {
+    console.error('Cancel job error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to cancel job',
+      error: (error as Error).message,
+    });
+  }
+};
+
+// ============================================
+// IMAGE HISTORY HANDLERS
+// ============================================
+
+/**
+ * Get image history for a product
+ * GET /api/image-scraper/history/:productId
+ */
+export const getImageHistory = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { productId } = req.params;
+
+    if (!productId) {
+      res.status(400).json({
+        success: false,
+        message: 'Product ID is required',
+      });
+      return;
+    }
+
+    const history = await getProductImageHistory(productId);
+
+    res.json({
+      success: true,
+      data: {
+        productId,
+        history,
+        count: history.length,
+      },
+    });
+  } catch (error) {
+    console.error('Get image history error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get image history',
+      error: (error as Error).message,
+    });
+  }
+};
+
+/**
+ * Restore a previous image from history
+ * POST /api/image-scraper/history/:productId/restore/:historyId
+ */
+export const restoreImage = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const { productId, historyId } = req.params;
+    const userId = req.user?.id;
+
+    if (!productId || !historyId) {
+      res.status(400).json({
+        success: false,
+        message: 'Product ID and History ID are required',
+      });
+      return;
+    }
+
+    const result = await restoreImageFromHistory(productId, historyId, userId);
+
+    if (result.success) {
+      res.json({
+        success: true,
+        data: {
+          productId,
+          restoredImageUrl: result.restoredImageUrl,
+        },
+        message: 'Image restored successfully',
+      });
+    } else {
+      res.status(400).json({
+        success: false,
+        message: result.error,
+      });
+    }
+  } catch (error) {
+    console.error('Restore image error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to restore image',
+      error: (error as Error).message,
+    });
+  }
+};
+
 export default {
   searchImages,
   assignProductImage,
   bulkAssignImages,
   getStats,
   fixBrokenPaths,
+  createBackgroundJob,
+  getJobStatus,
+  getJobList,
+  getJobResults,
+  cancelBackgroundJob,
+  getImageHistory,
+  restoreImage,
 };

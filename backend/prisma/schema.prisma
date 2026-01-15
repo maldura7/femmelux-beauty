@@ -230,6 +230,7 @@ model Product {
   brand        Brand       @relation(fields: [brandId], references: [id], onDelete: Cascade)
   orderItems   OrderItem[]
   searchClicks SearchLog[] @relation("ClickedProduct")
+  imageHistory ProductImageHistory[]
 
   @@index([brandId])
   @@index([slug])
@@ -386,4 +387,58 @@ model PasswordResetToken {
   @@index([userId])
   @@index([expiresAt])
   @@map("password_reset_tokens")
+}
+
+// ============================================
+// IMAGE SCRAPER BACKGROUND JOBS
+// ============================================
+
+enum ImageScraperJobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+model ImageScraperJob {
+  id             String                 @id @default(uuid())
+  status         ImageScraperJobStatus  @default(PENDING)
+  totalProducts  Int                    @default(0)
+  processed      Int                    @default(0)
+  successful     Int                    @default(0)
+  failed         Int                    @default(0)
+  brandId        String?                // Optional: filter by brand
+  categoryId     String?                // Optional: filter by category
+  startedAt      DateTime?
+  completedAt    DateTime?
+  errorLog       Json?                  // Array of error messages
+  results        Json?                  // Array of ScrapeResult objects
+  createdAt      DateTime               @default(now())
+  createdBy      String                 // Admin user ID who created the job
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([createdBy])
+  @@map("image_scraper_jobs")
+}
+
+// ============================================
+// PRODUCT IMAGE HISTORY (for rollback)
+// ============================================
+
+model ProductImageHistory {
+  id         String   @id @default(uuid())
+  productId  String
+  imageUrl   String   @db.Text
+  source     String?  // Where the image came from (sephora, amazon, etc.)
+  replacedAt DateTime @default(now())
+  replacedBy String?  // Admin user ID who made the change
+
+  // Relations
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@index([replacedAt])
+  @@map("product_image_history")
 }

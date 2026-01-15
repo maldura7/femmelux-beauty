@@ -93,7 +93,15 @@
       "Bash([ -s \"$NVM_DIR/nvm.sh\" ])",
       "Bash(. \"$NVM_DIR/nvm.sh\")",
       "Bash(/opt/homebrew/bin/npx tsc --noEmit)",
-      "Bash(export PATH=\"/usr/local/bin:/opt/homebrew/bin:$PATH\")"
+      "Bash(export PATH=\"/usr/local/bin:/opt/homebrew/bin:$PATH\")",
+      "Bash(/opt/homebrew/bin/npm run build)",
+      "Bash(/usr/local/bin/npm run typecheck)",
+      "Bash(/opt/homebrew/bin/npm run typecheck)",
+      "Bash(PATH=\"/Users/mdura/.nvm/versions/node/v20.18.1/bin:$PATH\" npx tsc:*)",
+      "Bash(export PATH=\"$HOME/.nvm/versions/node/v20.18.1/bin:$PATH\")",
+      "Bash(source ~/.nvm/nvm.sh)",
+      "Bash(PATH=\"/opt/homebrew/bin:$PATH\" npx tsc:*)",
+      "Bash(/opt/homebrew/bin/npx prisma generate)"
     ]
   }
 }

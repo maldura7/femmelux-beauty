@@ -6,6 +6,15 @@ import {
   bulkAssignImages,
   getStats,
   fixBrokenPaths,
+  // Background job handlers
+  createBackgroundJob,
+  getJobStatus,
+  getJobList,
+  cancelBackgroundJob,
+  getJobResults,
+  // Image history handlers
+  getImageHistory,
+  restoreImage,
 } from '../controllers/imageScraper.controller';
 
 const router = Router();
@@ -49,5 +58,62 @@ router.get('/stats', authenticateToken, authorizeRoles('ADMIN'), getStats);
  * @access  Admin only
  */
 router.post('/fix-broken-paths', authenticateToken, authorizeRoles('ADMIN'), fixBrokenPaths);
+
+// ============================================
+// BACKGROUND JOB ROUTES
+// ============================================
+
+/**
+ * @route   POST /api/image-scraper/jobs
+ * @desc    Create a new background image scraping job
+ * @access  Admin only
+ */
+router.post('/jobs', authenticateToken, authorizeRoles('ADMIN'), createBackgroundJob);
+
+/**
+ * @route   GET /api/image-scraper/jobs
+ * @desc    List all background jobs
+ * @access  Admin only
+ */
+router.get('/jobs', authenticateToken, authorizeRoles('ADMIN'), getJobList);
+
+/**
+ * @route   GET /api/image-scraper/jobs/:jobId
+ * @desc    Get status of a specific job
+ * @access  Admin only
+ */
+router.get('/jobs/:jobId', authenticateToken, authorizeRoles('ADMIN'), getJobStatus);
+
+/**
+ * @route   GET /api/image-scraper/jobs/:jobId/results
+ * @desc    Get detailed results of a completed job
+ * @access  Admin only
+ */
+router.get('/jobs/:jobId/results', authenticateToken, authorizeRoles('ADMIN'), getJobResults);
+
+/**
+ * @route   DELETE /api/image-scraper/jobs/:jobId
+ * @desc    Cancel a running or pending job
+ * @access  Admin only
+ */
+router.delete('/jobs/:jobId', authenticateToken, authorizeRoles('ADMIN'), cancelBackgroundJob);
+
+// ============================================
+// IMAGE HISTORY ROUTES
+// ============================================
+
+/**
+ * @route   GET /api/image-scraper/history/:productId
+ * @desc    Get image history for a product
+ * @access  Admin only
+ */
+router.get('/history/:productId', authenticateToken, authorizeRoles('ADMIN'), getImageHistory);
+
+/**
+ * @route   POST /api/image-scraper/history/:productId/restore/:historyId
+ * @desc    Restore a previous image from history
+ * @access  Admin only
+ */
+router.post('/history/:productId/restore/:historyId', authenticateToken, authorizeRoles('ADMIN'), restoreImage);
 
 export default router;

@@ -55,6 +55,324 @@ async function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// ============================================
+// SMART SEARCH HELPERS
+// ============================================
+
+/**
+ * Normalize product name for better search matching
+ * Removes sizes, special characters, and standardizes spacing
+ */
+function normalizeProductName(name: string): string {
+  return name
+    // Remove size indicators like "100ml", "3.4 oz", "50g", "1.7 fl oz"
+    .replace(/\b\d+(\.\d+)?\s*(ml|oz|fl\.?\s*oz|g|gram|kg|l|liter|litre)\b/gi, '')
+    // Remove pack sizes like "2-pack", "set of 3"
+    .replace(/\b\d+[-\s]*(pack|piece|count|ct|pc)\b/gi, '')
+    .replace(/\bset\s+of\s+\d+\b/gi, '')
+    // Remove special characters but keep spaces
+    .replace(/[^\w\s-]/g, ' ')
+    // Normalize multiple spaces to single space
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Generate multiple search variations for a product
+ * Returns array of queries to try, from most specific to most general
+ */
+function generateSearchVariations(name: string, brand?: string): string[] {
+  const variations: string[] = [];
+  const normalizedName = normalizeProductName(name);
+
+  // Original query with brand
+  if (brand) {
+    variations.push(`${brand} ${name}`);
+    variations.push(`${brand} ${normalizedName}`);
+  }
+
+  // Just the product name
+  variations.push(name);
+  variations.push(normalizedName);
+
+  // Extract key product words (removing common filler words)
+  const fillerWords = ['the', 'a', 'an', 'for', 'with', 'and', 'or', 'in', 'on', 'by', 'to', 'of'];
+  const keyWords = normalizedName
+    .toLowerCase()
+    .split(' ')
+    .filter(word => word.length > 2 && !fillerWords.includes(word));
+
+  if (keyWords.length > 2) {
+    // Use first 3 key words
+    variations.push(keyWords.slice(0, 3).join(' '));
+  }
+
+  // Brand only as last resort
+  if (brand) {
+    variations.push(brand);
+  }
+
+  // Remove duplicates while preserving order
+  return [...new Set(variations)];
+}
+
+/**
+ * Check if URL contains watermark indicators
+ */
+function urlContainsWatermarkIndicators(url: string): boolean {
+  const watermarkPatterns = [
+    'watermark', 'sample', 'preview', 'demo', 'stock',
+    'shutterstock', 'istockphoto', 'gettyimages', 'dreamstime',
+    'depositphotos', '123rf', 'alamy', 'adobe-stock'
+  ];
+  const lowerUrl = url.toLowerCase();
+  return watermarkPatterns.some(pattern => lowerUrl.includes(pattern));
+}
+
+/**
+ * Check if URL indicates a professional product shot
+ */
+function urlIndicatesProductShot(url: string): boolean {
+  const productShotPatterns = [
+    'product', 'hero', 'main', 'primary', 'pdp',
+    'packshot', 'pack-shot', 'beauty-shot',
+    '/p/', '/products/', '/item/', '/sku/'
+  ];
+  const lowerUrl = url.toLowerCase();
+  return productShotPatterns.some(pattern => lowerUrl.includes(pattern));
+}
+
+// ============================================
+// NEW RETAILER SCRAPERS
+// ============================================
+
+/**
+ * Search Amazon for product images
+ */
+async function searchAmazon(params: ProductSearchParams): Promise<ImageResult[]> {
+  const results: ImageResult[] = [];
+  const searchQuery = encodeURIComponent(`${params.brand || ''} ${params.name}`.trim());
+
+  try {
+    const response = await axios.get(
+      `https://www.amazon.com/s?k=${searchQuery}&i=beauty`,
+      {
+        headers: {
+          'User-Agent': getRandomUserAgent(),
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.5',
+        },
+        timeout: 15000,
+      }
+    );
+
+    const $ = cheerio.load(response.data);
+
+    // Find product images in search results
+    $('img.s-image').each((_, elem) => {
+      const src = $(elem).attr('src');
+      if (src && src.includes('images-amazon') && !src.includes('sprite')) {
+        // Convert to larger image by modifying URL
+        const highResSrc = src
+          .replace(/\._[A-Z]+\d+_/, '._AC_SL1500_')
+          .replace(/\._SS\d+_/, '._AC_SL1500_');
+        results.push({
+          url: highResSrc,
+          source: 'amazon',
+          quality: 82,
+        });
+      }
+    });
+
+    // Also check data-src for lazy-loaded images
+    $('img[data-src*="images-amazon"]').each((_, elem) => {
+      const src = $(elem).attr('data-src');
+      if (src) {
+        results.push({
+          url: src,
+          source: 'amazon',
+          quality: 80,
+        });
+      }
+    });
+  } catch (error) {
+    console.log(`Amazon search failed for "${params.name}":`, (error as Error).message);
+  }
+
+  return results.slice(0, 5);
+}
+
+/**
+ * Search Walmart Beauty for product images
+ */
+async function searchWalmart(params: ProductSearchParams): Promise<ImageResult[]> {
+  const results: ImageResult[] = [];
+  const searchQuery = encodeURIComponent(`${params.brand || ''} ${params.name}`.trim());
+
+  try {
+    const response = await axios.get(
+      `https://www.walmart.com/search?q=${searchQuery}&cat_id=1085666`,
+      {
+        headers: {
+          'User-Agent': getRandomUserAgent(),
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.5',
+        },
+        timeout: 15000,
+      }
+    );
+
+    const $ = cheerio.load(response.data);
+
+    // Find product images
+    $('img[data-testid="productTileImage"], img[class*="product"]').each((_, elem) => {
+      const src = $(elem).attr('src') || $(elem).attr('data-src');
+      if (src && (src.includes('walmartimages') || src.includes('i5.walmartimages'))) {
+        // Get larger version
+        const highResSrc = src.replace(/\/\d+x\d+\//, '/1000x1000/');
+        results.push({
+          url: highResSrc,
+          source: 'walmart',
+          quality: 78,
+        });
+      }
+    });
+  } catch (error) {
+    console.log(`Walmart search failed for "${params.name}":`, (error as Error).message);
+  }
+
+  return results.slice(0, 5);
+}
+
+/**
+ * Search Target Beauty for product images
+ */
+async function searchTarget(params: ProductSearchParams): Promise<ImageResult[]> {
+  const results: ImageResult[] = [];
+  const searchQuery = encodeURIComponent(`${params.brand || ''} ${params.name}`.trim());
+
+  try {
+    const response = await axios.get(
+      `https://www.target.com/s?searchTerm=${searchQuery}&category=5xu2f`,
+      {
+        headers: {
+          'User-Agent': getRandomUserAgent(),
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.5',
+        },
+        timeout: 15000,
+      }
+    );
+
+    const $ = cheerio.load(response.data);
+
+    // Find product images
+    $('img[data-test="product-image"], img[class*="ProductCard"]').each((_, elem) => {
+      const src = $(elem).attr('src') || $(elem).attr('data-src');
+      if (src && src.includes('target.scene7')) {
+        // Get larger version
+        const highResSrc = src.replace(/\?.*$/, '?wid=1000&hei=1000&fmt=webp');
+        results.push({
+          url: highResSrc,
+          source: 'target',
+          quality: 80,
+        });
+      }
+    });
+  } catch (error) {
+    console.log(`Target search failed for "${params.name}":`, (error as Error).message);
+  }
+
+  return results.slice(0, 5);
+}
+
+/**
+ * Search Nordstrom for product images (high-end beauty)
+ */
+async function searchNordstrom(params: ProductSearchParams): Promise<ImageResult[]> {
+  const results: ImageResult[] = [];
+  const searchQuery = encodeURIComponent(`${params.brand || ''} ${params.name}`.trim());
+
+  try {
+    const response = await axios.get(
+      `https://www.nordstrom.com/sr?keyword=${searchQuery}&filterByDepartment=Beauty`,
+      {
+        headers: {
+          'User-Agent': getRandomUserAgent(),
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.5',
+        },
+        timeout: 15000,
+      }
+    );
+
+    const $ = cheerio.load(response.data);
+
+    // Find product images
+    $('img[class*="product"], img[data-testid*="product"]').each((_, elem) => {
+      const src = $(elem).attr('src') || $(elem).attr('data-src');
+      if (src && (src.includes('nordstrom') || src.includes('n.nordstrommedia'))) {
+        // Get larger version
+        const highResSrc = src.replace(/\/\d+\//, '/1000/');
+        results.push({
+          url: highResSrc,
+          source: 'nordstrom',
+          quality: 85,
+        });
+      }
+    });
+  } catch (error) {
+    console.log(`Nordstrom search failed for "${params.name}":`, (error as Error).message);
+  }
+
+  return results.slice(0, 5);
+}
+
+/**
+ * Search Dermstore for product images (skincare focused)
+ */
+async function searchDermstore(params: ProductSearchParams): Promise<ImageResult[]> {
+  const results: ImageResult[] = [];
+  const searchQuery = encodeURIComponent(`${params.brand || ''} ${params.name}`.trim());
+
+  try {
+    const response = await axios.get(
+      `https://www.dermstore.com/search?q=${searchQuery}`,
+      {
+        headers: {
+          'User-Agent': getRandomUserAgent(),
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.5',
+        },
+        timeout: 15000,
+      }
+    );
+
+    const $ = cheerio.load(response.data);
+
+    // Find product images
+    $('img.productBlock_image, img[class*="product-image"]').each((_, elem) => {
+      const src = $(elem).attr('src') || $(elem).attr('data-src');
+      if (src && !src.includes('placeholder')) {
+        const fullUrl = src.startsWith('//') ? `https:${src}` : src;
+        results.push({
+          url: fullUrl,
+          source: 'dermstore',
+          quality: 80,
+        });
+      }
+    });
+  } catch (error) {
+    console.log(`Dermstore search failed for "${params.name}":`, (error as Error).message);
+  }
+
+  return results.slice(0, 5);
+}
+
+// ============================================
+// EXISTING RETAILER SCRAPERS
+// ============================================
+
 /**
  * Search Sephora for product images
  */
@@ -234,6 +552,7 @@ async function searchBrandWebsite(params: ProductSearchParams): Promise<ImageRes
 
   // Map of brand names to their website search URLs
   const brandSites: Record<string, string> = {
+    // Premium Makeup Brands
     'mac': 'https://www.maccosmetics.com/search?q=',
     'nars': 'https://www.narscosmetics.com/search?q=',
     'clinique': 'https://www.clinique.com/search?q=',
@@ -246,13 +565,86 @@ async function searchBrandWebsite(params: ProductSearchParams): Promise<ImageRes
     'fenty beauty': 'https://fentybeauty.com/search?q=',
     'rare beauty': 'https://www.rarebeauty.com/search?q=',
     'glossier': 'https://www.glossier.com/search?q=',
+    'bobbi brown': 'https://www.bobbibrowncosmetics.com/search?q=',
+    'laura mercier': 'https://www.lauramercier.com/search?q=',
+    'hourglass': 'https://www.hourglasscosmetics.com/search?q=',
+    'pat mcgrath': 'https://www.patmcgrath.com/search?q=',
+    'natasha denona': 'https://www.natashadenona.com/search?q=',
+    'ilia': 'https://iliabeauty.com/search?q=',
+    'merit': 'https://meritbeauty.com/search?q=',
+    'kosas': 'https://kosas.com/search?q=',
+
+    // Drugstore/Mass Market Makeup
+    'loreal': 'https://www.lorealparisusa.com/search?q=',
+    "l'oreal": 'https://www.lorealparisusa.com/search?q=',
+    'maybelline': 'https://www.maybelline.com/search?q=',
+    'nyx': 'https://www.nyxcosmetics.com/search?q=',
+    'revlon': 'https://www.revlon.com/search?q=',
+    'covergirl': 'https://www.covergirl.com/search?q=',
+    'milani': 'https://www.milanicosmetics.com/search?q=',
+    'elf': 'https://www.elfcosmetics.com/search?q=',
+    'e.l.f.': 'https://www.elfcosmetics.com/search?q=',
+    'colourpop': 'https://colourpop.com/search?q=',
+    'wet n wild': 'https://www.wetnwildbeauty.com/search?q=',
+
+    // Skincare Brands
     'the ordinary': 'https://theordinary.com/search?q=',
     'drunk elephant': 'https://www.drunkelephant.com/search?q=',
     'tatcha': 'https://www.tatcha.com/search?q=',
     'sunday riley': 'https://sundayriley.com/search?q=',
+    'skinceuticals': 'https://www.skinceuticals.com/search?q=',
+    'paula\'s choice': 'https://www.paulaschoice.com/search?q=',
+    'paulas choice': 'https://www.paulaschoice.com/search?q=',
+    'cerave': 'https://www.cerave.com/search?q=',
+    'la roche-posay': 'https://www.laroche-posay.us/search?q=',
+    'la roche posay': 'https://www.laroche-posay.us/search?q=',
+    'neutrogena': 'https://www.neutrogena.com/search?q=',
+    'olay': 'https://www.olay.com/search?q=',
+    'first aid beauty': 'https://www.firstaidbeauty.com/search?q=',
+    'glow recipe': 'https://www.glowrecipe.com/search?q=',
+    'youth to the people': 'https://www.youthtothepeople.com/search?q=',
+    'supergoop': 'https://supergoop.com/search?q=',
+    'summer fridays': 'https://summerfridays.com/search?q=',
+
+    // Asian Beauty/J-Beauty/K-Beauty
+    'shiseido': 'https://www.shiseido.com/us/en/search?q=',
+    'sk-ii': 'https://www.sk-ii.com/search?q=',
+    'sk ii': 'https://www.sk-ii.com/search?q=',
+    'la mer': 'https://www.lamer.com/search?q=',
+    'sulwhasoo': 'https://us.sulwhasoo.com/search?q=',
+    'laneige': 'https://us.laneige.com/search?q=',
+    'innisfree': 'https://us.innisfree.com/search?q=',
+    'cosrx': 'https://www.cosrx.com/search?q=',
+
+    // Haircare Brands
     'olaplex': 'https://olaplex.com/search?q=',
     'kerastase': 'https://www.kerastase-usa.com/search?q=',
     'moroccanoil': 'https://www.moroccanoil.com/search?q=',
+    'paul mitchell': 'https://www.paulmitchell.com/search?q=',
+    'redken': 'https://www.redken.com/search?q=',
+    'matrix': 'https://www.matrix.com/search?q=',
+    'aveda': 'https://www.aveda.com/search?q=',
+    'bumble and bumble': 'https://www.bumbleandbumble.com/search?q=',
+    'living proof': 'https://www.livingproof.com/search?q=',
+    'briogeo': 'https://briogeohair.com/search?q=',
+    'amika': 'https://loveamika.com/search?q=',
+    'verb': 'https://www.verbproducts.com/search?q=',
+    'ouai': 'https://theouai.com/search?q=',
+    'drybar': 'https://www.drybar.com/search?q=',
+
+    // Nail Care Brands
+    'opi': 'https://www.opi.com/search?q=',
+    'essie': 'https://www.essie.com/search?q=',
+    'sally hansen': 'https://www.sallyhansen.com/search?q=',
+    'zoya': 'https://www.zoya.com/search?q=',
+    'orly': 'https://orlybeauty.com/search?q=',
+
+    // Fragrance Brands
+    'jo malone': 'https://www.jomalone.com/search?q=',
+    'diptyque': 'https://www.diptyqueparis.com/search?q=',
+    'byredo': 'https://www.byredo.com/search?q=',
+    'le labo': 'https://www.lelabofragrances.com/search?q=',
+    'maison margiela': 'https://www.maisonmargiela-fragrances.us/search?q=',
   };
 
   const brandKey = params.brand.toLowerCase();
@@ -342,39 +734,95 @@ async function searchGoogleImages(params: ProductSearchParams): Promise<ImageRes
 
 /**
  * Score an image based on various quality factors
+ * Enhanced with watermark detection, product shot detection, and minimum resolution filtering
  */
 function scoreImage(image: ImageResult, params: ProductSearchParams): number {
   let score = image.quality;
+  const url = image.url.toLowerCase();
 
-  // Boost score for brand official images
+  // === SOURCE-BASED SCORING ===
+
+  // Boost score for brand official images (highest trust)
   if (image.source.startsWith('brand:')) {
+    score += 20;
+  }
+
+  // Boost for reputable beauty retailers (tiered)
+  if (['sephora', 'ulta', 'nordstrom'].includes(image.source)) {
     score += 15;
-  }
-
-  // Boost for reputable beauty retailers
-  if (['sephora', 'ulta'].includes(image.source)) {
+  } else if (['amazon', 'target', 'dermstore'].includes(image.source)) {
     score += 10;
+  } else if (['walmart', 'lookfantastic', 'cultbeauty'].includes(image.source)) {
+    score += 5;
   }
 
-  // Penalize very small images
+  // === SIZE-BASED SCORING ===
+
+  // Filter out tiny images (likely thumbnails or icons)
+  if (image.width && image.width < 150) {
+    return 0; // Skip completely
+  }
+
+  // Penalize small images
   if (image.width && image.width < 200) {
-    score -= 20;
+    score -= 25;
   }
 
   // Boost larger images
   if (image.width && image.width >= 500) {
-    score += 10;
+    score += 15;
+  } else if (image.width && image.width >= 300) {
+    score += 5;
   }
 
-  // Check if URL contains relevant keywords
-  const url = image.url.toLowerCase();
+  // === ASPECT RATIO SCORING ===
+  // Prefer square/product-style images (typical for e-commerce)
+  if (image.width && image.height) {
+    const ratio = image.width / image.height;
+    if (ratio > 0.8 && ratio < 1.2) {
+      score += 10; // Square-ish images are usually product shots
+    } else if (ratio < 0.5 || ratio > 2) {
+      score -= 10; // Very tall or wide images are usually lifestyle/banner
+    }
+  }
+
+  // === CONTENT-BASED SCORING ===
+
+  // Check if URL contains brand name
   if (params.brand && url.includes(params.brand.toLowerCase().replace(/\s+/g, ''))) {
-    score += 5;
+    score += 8;
+  }
+
+  // Check for product name words in URL
+  const productWords = params.name.toLowerCase().split(' ').filter(w => w.length > 3);
+  const matchingWords = productWords.filter(word => url.includes(word));
+  score += matchingWords.length * 3;
+
+  // === QUALITY INDICATORS ===
+
+  // Boost professional product shot indicators
+  if (urlIndicatesProductShot(image.url)) {
+    score += 15;
+  }
+
+  // Penalize watermarked images
+  if (urlContainsWatermarkIndicators(image.url)) {
+    score -= 40;
   }
 
   // Penalize placeholder or generic images
   if (url.includes('placeholder') || url.includes('noimage') || url.includes('default')) {
     score -= 50;
+  }
+
+  // Penalize lifestyle/model images (less useful for product catalog)
+  if (url.includes('lifestyle') || url.includes('model') || url.includes('swatch')) {
+    score -= 15;
+  }
+
+  // Boost white background indicators
+  if (url.includes('white') || url.includes('clean') || url.includes('pure')) {
+    score += 5;
   }
 
   return Math.max(0, Math.min(100, score));
@@ -452,18 +900,34 @@ async function downloadImage(imageUrl: string, productId: string): Promise<strin
 
 /**
  * Search for product image across multiple sources
+ * Now includes 11 data sources for comprehensive coverage
  */
 export async function searchProductImage(params: ProductSearchParams): Promise<ImageResult[]> {
   const allResults: ImageResult[] = [];
 
-  // Search multiple sources in parallel with delays to avoid rate limiting
+  // Search multiple sources in parallel with staggered delays to avoid rate limiting
+  // Sources ordered by quality/reliability: Brand first, then major retailers, then general
   const searchPromises = [
+    // Tier 1: Brand official site (highest quality)
     searchBrandWebsite(params),
-    delay(500).then(() => searchSephora(params)),
-    delay(1000).then(() => searchUlta(params)),
-    delay(1500).then(() => searchLookfantastic(params)),
-    delay(2000).then(() => searchCultBeauty(params)),
-    delay(2500).then(() => searchGoogleImages(params)),
+
+    // Tier 2: Major beauty retailers (high quality)
+    delay(300).then(() => searchSephora(params)),
+    delay(600).then(() => searchUlta(params)),
+    delay(900).then(() => searchNordstrom(params)),
+
+    // Tier 3: Large general retailers (good quality)
+    delay(1200).then(() => searchAmazon(params)),
+    delay(1500).then(() => searchTarget(params)),
+    delay(1800).then(() => searchWalmart(params)),
+
+    // Tier 4: Specialty beauty retailers
+    delay(2100).then(() => searchDermstore(params)),
+    delay(2400).then(() => searchLookfantastic(params)),
+    delay(2700).then(() => searchCultBeauty(params)),
+
+    // Tier 5: Fallback to Google Images
+    delay(3000).then(() => searchGoogleImages(params)),
   ];
 
   const results = await Promise.allSettled(searchPromises);
@@ -474,16 +938,87 @@ export async function searchProductImage(params: ProductSearchParams): Promise<I
     }
   });
 
-  // Remove duplicates based on URL
-  const uniqueResults = allResults.filter((img, index, self) =>
-    index === self.findIndex(i => i.url === img.url)
-  );
+  // Remove duplicates based on URL (normalize to avoid CDN variations)
+  const uniqueResults = removeDuplicateImages(allResults);
 
   return uniqueResults;
 }
 
 /**
+ * Remove duplicate images based on URL similarity
+ * Handles CDN variations and keeps the highest quality version
+ */
+function removeDuplicateImages(images: ImageResult[]): ImageResult[] {
+  const seen = new Map<string, ImageResult>();
+
+  for (const img of images) {
+    // Normalize URL for comparison (remove size params, CDN prefixes)
+    const normalizedUrl = img.url
+      .replace(/\?.*$/, '') // Remove query params
+      .replace(/\/\d+x\d+\//, '/') // Remove size indicators
+      .replace(/\._[A-Z]+\d+_/, '.') // Remove Amazon size codes
+      .replace(/https?:\/\/[^\/]+/, '') // Remove domain for path comparison
+      .toLowerCase();
+
+    const existing = seen.get(normalizedUrl);
+    if (!existing || img.quality > existing.quality) {
+      seen.set(normalizedUrl, img);
+    }
+  }
+
+  return Array.from(seen.values());
+}
+
+/**
+ * Smart search with auto-retry using search variations
+ * Tries progressively simpler search queries if initial searches fail
+ */
+export async function smartSearchProductImage(params: ProductSearchParams): Promise<{
+  images: ImageResult[];
+  searchVariationUsed: string;
+}> {
+  const variations = generateSearchVariations(params.name, params.brand);
+  console.log(`[SmartSearch] Trying ${variations.length} search variations for "${params.name}"`);
+
+  for (let i = 0; i < variations.length; i++) {
+    const variation = variations[i];
+    console.log(`[SmartSearch] Attempt ${i + 1}/${variations.length}: "${variation}"`);
+
+    // Create modified params with the current search variation
+    const modifiedParams: ProductSearchParams = {
+      ...params,
+      name: variation,
+    };
+
+    const images = await searchProductImage(modifiedParams);
+
+    // Filter to only include images with a minimum quality score
+    const qualityImages = images.filter(img => scoreImage(img, params) >= 30);
+
+    if (qualityImages.length > 0) {
+      console.log(`[SmartSearch] Found ${qualityImages.length} quality images with variation: "${variation}"`);
+      return {
+        images: qualityImages,
+        searchVariationUsed: variation,
+      };
+    }
+
+    // Add a small delay before trying next variation
+    if (i < variations.length - 1) {
+      await delay(1000);
+    }
+  }
+
+  console.log(`[SmartSearch] No images found after trying all ${variations.length} variations`);
+  return {
+    images: [],
+    searchVariationUsed: 'none',
+  };
+}
+
+/**
  * Find and assign image to a single product
+ * Enhanced with smart search and auto-retry
  */
 export async function findAndAssignProductImage(productId: string): Promise<ScrapeResult> {
   try {
@@ -516,7 +1051,7 @@ export async function findAndAssignProductImage(productId: string): Promise<Scra
       }
     }
 
-    // Search for images
+    // Search for images using smart search with auto-retry
     const searchParams: ProductSearchParams = {
       name: product.name,
       brand: product.brand?.name,
@@ -524,7 +1059,9 @@ export async function findAndAssignProductImage(productId: string): Promise<Scra
       category: product.category || undefined,
     };
 
-    const images = await searchProductImage(searchParams);
+    // Use smart search which tries multiple variations
+    const { images, searchVariationUsed } = await smartSearchProductImage(searchParams);
+    console.log(`[ImageScraper] Search for "${product.name}" used variation: "${searchVariationUsed}", found ${images.length} images`);
 
     if (images.length === 0) {
       return {
@@ -776,16 +1313,23 @@ async function downloadImageAsBase64(imageUrl: string, retries = 3): Promise<str
  *
  * Accepts either a single imageUrl or an array of fallback URLs to try
  */
-export async function saveProductImage(productId: string, imageUrl: string | string[]): Promise<ScrapeResult> {
+export async function saveProductImage(
+  productId: string,
+  imageUrl: string | string[],
+  options?: {
+    source?: string;
+    replacedBy?: string;
+  }
+): Promise<ScrapeResult> {
   // Lazy import to avoid circular dependencies
   const cloudinaryService = await import('./cloudinary.service');
   const useCloudinary = cloudinaryService.isCloudinaryConfigured();
 
   try {
-    // Get product details
+    // Get product details including current images for history tracking
     const product = await prisma.product.findUnique({
       where: { id: productId },
-      select: { id: true, name: true },
+      select: { id: true, name: true, images: true },
     });
 
     if (!product) {
@@ -850,6 +1394,29 @@ export async function saveProductImage(productId: string, imageUrl: string | str
         success: false,
         error: `Failed to process image from ${imageUrls.length} URL(s)`,
       };
+    }
+
+    // Track image history before replacing (if product has existing images)
+    const existingImages = product.images as string[];
+    if (existingImages && existingImages.length > 0 && existingImages[0]) {
+      const previousImageUrl = existingImages[0];
+      // Only track if it's a real image URL (not placeholder)
+      if (!previousImageUrl.includes('placeholder') && !previousImageUrl.includes('noimage')) {
+        try {
+          await prisma.productImageHistory.create({
+            data: {
+              productId,
+              imageUrl: previousImageUrl,
+              source: options?.source || 'previous',
+              replacedBy: options?.replacedBy,
+            },
+          });
+          console.log(`[ImageHistory] Saved previous image to history for product ${productId}`);
+        } catch (historyError) {
+          // Don't fail the main operation if history tracking fails
+          console.error(`[ImageHistory] Failed to save history:`, historyError);
+        }
+      }
     }
 
     // Store the image URL (Cloudinary URL or base64)
@@ -930,11 +1497,133 @@ export async function fixBrokenImagePaths(): Promise<{
   };
 }
 
+// ============================================
+// IMAGE HISTORY FUNCTIONS
+// ============================================
+
+/**
+ * Get image history for a product
+ */
+export async function getProductImageHistory(productId: string): Promise<{
+  productId: string;
+  productName: string;
+  currentImage: string | null;
+  history: {
+    id: string;
+    imageUrl: string;
+    source: string | null;
+    replacedAt: Date;
+    replacedBy: string | null;
+  }[];
+}> {
+  const product = await prisma.product.findUnique({
+    where: { id: productId },
+    select: {
+      id: true,
+      name: true,
+      images: true,
+      imageHistory: {
+        orderBy: { replacedAt: 'desc' },
+        take: 20,
+      },
+    },
+  });
+
+  if (!product) {
+    return {
+      productId,
+      productName: 'Unknown',
+      currentImage: null,
+      history: [],
+    };
+  }
+
+  const images = product.images as string[];
+
+  return {
+    productId: product.id,
+    productName: product.name,
+    currentImage: images && images.length > 0 ? images[0] : null,
+    history: product.imageHistory,
+  };
+}
+
+/**
+ * Restore a previous image from history
+ */
+export async function restoreImageFromHistory(
+  productId: string,
+  historyId: string,
+  replacedBy?: string
+): Promise<{ success: boolean; error?: string; restoredImageUrl?: string }> {
+  try {
+    // Get the history entry
+    const historyEntry = await prisma.productImageHistory.findUnique({
+      where: { id: historyId },
+    });
+
+    if (!historyEntry) {
+      return { success: false, error: 'History entry not found' };
+    }
+
+    if (historyEntry.productId !== productId) {
+      return { success: false, error: 'History entry does not belong to this product' };
+    }
+
+    // Get current image to save to history before replacing
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+      select: { images: true },
+    });
+
+    if (product) {
+      const currentImages = product.images as string[];
+      if (currentImages && currentImages.length > 0 && currentImages[0]) {
+        // Save current image to history
+        await prisma.productImageHistory.create({
+          data: {
+            productId,
+            imageUrl: currentImages[0],
+            source: 'replaced_by_restore',
+            replacedBy,
+          },
+        });
+      }
+    }
+
+    // Restore the old image
+    await prisma.product.update({
+      where: { id: productId },
+      data: {
+        images: [historyEntry.imageUrl],
+      },
+    });
+
+    // Optionally delete the history entry that was restored
+    await prisma.productImageHistory.delete({
+      where: { id: historyId },
+    });
+
+    return {
+      success: true,
+      restoredImageUrl: historyEntry.imageUrl,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: (error as Error).message,
+    };
+  }
+}
+
 export default {
   searchProductImage,
+  smartSearchProductImage,
   findAndAssignProductImage,
   bulkFindProductImages,
   getProductsWithoutImagesCount,
   saveProductImage,
   fixBrokenImagePaths,
+  getProductImageHistory,
+  restoreImageFromHistory,
 };

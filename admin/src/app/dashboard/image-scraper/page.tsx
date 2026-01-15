@@ -12,6 +12,10 @@ import {
   EyeIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  QueueListIcon,
+  PlayIcon,
+  StopIcon,
+  ClockIcon,
 } from '@heroicons/react/24/outline';
 import api from '@/lib/api';
 import { resolveImageUrl } from '@/lib/utils';
@@ -46,6 +50,18 @@ interface ProductWithImages extends Product {
   searchError?: string;
   isSaving?: boolean;
   saved?: boolean;
+}
+
+interface BackgroundJob {
+  jobId: string;
+  status: 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+  totalProducts: number;
+  processed: number;
+  successful: number;
+  failed: number;
+  startedAt?: string;
+  completedAt?: string;
+  percentComplete: number;
 }
 
 interface Pagination {
@@ -93,10 +109,30 @@ export default function ImageScraperPage() {
   // Preview modal
   const [previewProduct, setPreviewProduct] = useState<ProductWithImages | null>(null);
 
+  // Tabs
+  const [activeTab, setActiveTab] = useState<'products' | 'jobs'>('products');
+
+  // Background jobs state
+  const [backgroundJobs, setBackgroundJobs] = useState<BackgroundJob[]>([]);
+  const [isLoadingJobs, setIsLoadingJobs] = useState(false);
+  const [isCreatingJob, setIsCreatingJob] = useState(false);
+  const [jobBrandId, setJobBrandId] = useState<string>('');
+  const [jobLimit, setJobLimit] = useState<number>(100);
+
   // Fetch brands on mount
   useEffect(() => {
     fetchBrands();
   }, []);
+
+  // Fetch background jobs when tab is active
+  useEffect(() => {
+    if (activeTab === 'jobs') {
+      fetchBackgroundJobs();
+      // Poll for updates every 5 seconds when on jobs tab
+      const interval = setInterval(fetchBackgroundJobs, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [activeTab]);
 
   // Fetch products when filters or page changes
   useEffect(() => {
@@ -138,6 +174,74 @@ export default function ImageScraperPage() {
     } catch (err) {
       console.error('Failed to fetch brands:', err);
     }
+  };
+
+  // ============================================
+  // BACKGROUND JOBS FUNCTIONS
+  // ============================================
+
+  const fetchBackgroundJobs = async () => {
+    setIsLoadingJobs(true);
+    try {
+      const response = await api.get('/image-scraper/jobs?limit=20');
+      const jobs = response.data.data?.jobs || [];
+      setBackgroundJobs(jobs);
+    } catch (err) {
+      console.error('Failed to fetch background jobs:', err);
+    } finally {
+      setIsLoadingJobs(false);
+    }
+  };
+
+  const createBackgroundJob = async () => {
+    setIsCreatingJob(true);
+    try {
+      const response = await api.post('/image-scraper/jobs', {
+        brandId: jobBrandId || undefined,
+        limit: jobLimit,
+      });
+
+      const job = response.data.data;
+      alert(`Background job started! Processing ${job.totalProducts} products.`);
+
+      // Refresh job list
+      fetchBackgroundJobs();
+    } catch (err: any) {
+      console.error('Failed to create background job:', err);
+      alert('Failed to create job: ' + (err?.response?.data?.message || err?.message || 'Unknown error'));
+    } finally {
+      setIsCreatingJob(false);
+    }
+  };
+
+  const cancelBackgroundJob = async (jobId: string) => {
+    const confirmed = confirm('Are you sure you want to cancel this job?');
+    if (!confirmed) return;
+
+    try {
+      await api.delete(`/image-scraper/jobs/${jobId}`);
+      alert('Job cancelled successfully');
+      fetchBackgroundJobs();
+    } catch (err: any) {
+      console.error('Failed to cancel job:', err);
+      alert('Failed to cancel job: ' + (err?.response?.data?.message || err?.message || 'Unknown error'));
+    }
+  };
+
+  const getJobStatusColor = (status: string) => {
+    switch (status) {
+      case 'PENDING': return 'bg-yellow-100 text-yellow-800';
+      case 'RUNNING': return 'bg-blue-100 text-blue-800';
+      case 'COMPLETED': return 'bg-green-100 text-green-800';
+      case 'FAILED': return 'bg-red-100 text-red-800';
+      case 'CANCELLED': return 'bg-gray-100 text-gray-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return '-';
+    return new Date(dateString).toLocaleString();
   };
 
   const fetchProducts = async (pageToFetch?: number) => {
@@ -805,7 +909,198 @@ export default function ImageScraperPage() {
         </div>
       </div>
 
-      {/* Filters */}
+      {/* Tabs */}
+      <div className="mb-6">
+        <div className="border-b border-gray-200">
+          <nav className="-mb-px flex space-x-8">
+            <button
+              onClick={() => setActiveTab('products')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'products'
+                  ? 'border-pink-500 text-pink-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <PhotoIcon className="h-5 w-5 inline-block mr-2" />
+              Product Images
+            </button>
+            <button
+              onClick={() => setActiveTab('jobs')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'jobs'
+                  ? 'border-pink-500 text-pink-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <QueueListIcon className="h-5 w-5 inline-block mr-2" />
+              Background Jobs
+              {backgroundJobs.some(j => j.status === 'RUNNING') && (
+                <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                  <ArrowPathIcon className="h-3 w-3 animate-spin mr-1" />
+                  Running
+                </span>
+              )}
+            </button>
+          </nav>
+        </div>
+      </div>
+
+      {/* Background Jobs Tab */}
+      {activeTab === 'jobs' && (
+        <div className="space-y-6">
+          {/* Create New Job */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Create Background Job</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Start a background job to automatically find and save images for products without images.
+              The job will run in the background - you can close this page and check back later.
+            </p>
+
+            <div className="flex flex-wrap items-end gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Brand Filter</label>
+                <select
+                  value={jobBrandId}
+                  onChange={(e) => setJobBrandId(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-pink-500 focus:border-pink-500"
+                >
+                  <option value="">All Brands</option>
+                  {brands.map((brand) => (
+                    <option key={brand.id} value={brand.id}>
+                      {brand.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Max Products</label>
+                <input
+                  type="number"
+                  value={jobLimit}
+                  onChange={(e) => setJobLimit(Math.min(500, Math.max(1, Number(e.target.value))))}
+                  min={1}
+                  max={500}
+                  className="w-24 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-pink-500 focus:border-pink-500"
+                />
+              </div>
+
+              <button
+                onClick={createBackgroundJob}
+                disabled={isCreatingJob}
+                className="px-6 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 disabled:opacity-50 flex items-center gap-2"
+              >
+                {isCreatingJob ? (
+                  <>
+                    <ArrowPathIcon className="h-5 w-5 animate-spin" />
+                    Starting...
+                  </>
+                ) : (
+                  <>
+                    <PlayIcon className="h-5 w-5" />
+                    Start Job
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Job List */}
+          <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="px-6 py-4 border-b flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">Job History</h3>
+              <button
+                onClick={fetchBackgroundJobs}
+                disabled={isLoadingJobs}
+                className="p-2 text-gray-500 hover:text-gray-700"
+                title="Refresh jobs"
+              >
+                <ArrowPathIcon className={`h-5 w-5 ${isLoadingJobs ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Progress</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Success/Failed</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Started</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Completed</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {isLoadingJobs && backgroundJobs.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                        <ArrowPathIcon className="h-8 w-8 animate-spin mx-auto mb-2" />
+                        Loading jobs...
+                      </td>
+                    </tr>
+                  ) : backgroundJobs.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                        No background jobs yet. Start one above!
+                      </td>
+                    </tr>
+                  ) : (
+                    backgroundJobs.map((job) => (
+                      <tr key={job.jobId} className="hover:bg-gray-50">
+                        <td className="px-4 py-3">
+                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${getJobStatusColor(job.status)}`}>
+                            {job.status}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <div className="w-32 bg-gray-200 rounded-full h-2">
+                              <div
+                                className="bg-pink-600 h-2 rounded-full transition-all duration-300"
+                                style={{ width: `${job.percentComplete}%` }}
+                              />
+                            </div>
+                            <span className="text-sm text-gray-600">
+                              {job.processed}/{job.totalProducts} ({job.percentComplete}%)
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="text-green-600 font-medium">{job.successful}</span>
+                          {' / '}
+                          <span className="text-red-600 font-medium">{job.failed}</span>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-600">
+                          {formatDate(job.startedAt)}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-600">
+                          {formatDate(job.completedAt)}
+                        </td>
+                        <td className="px-4 py-3">
+                          {(job.status === 'PENDING' || job.status === 'RUNNING') && (
+                            <button
+                              onClick={() => cancelBackgroundJob(job.jobId)}
+                              className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
+                              title="Cancel job"
+                            >
+                              <StopIcon className="h-5 w-5" />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Products Tab - Original Filters */}
+      {activeTab === 'products' && (
+      <>
       <div className="bg-white rounded-lg shadow p-4 mb-6">
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2">
@@ -1211,6 +1506,8 @@ export default function ImageScraperPage() {
           </div>
         )}
       </div>
+      </>
+      )}
 
       {/* Preview Modal */}
       {previewProduct && (
@@ -1230,6 +1527,55 @@ export default function ImageScraperPage() {
             </div>
 
             <div className="p-6 overflow-y-auto max-h-[70vh]">
+              {/* Side-by-Side Comparison Section */}
+              {previewProduct.selectedImage && (
+                <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                  <h4 className="text-sm font-medium text-gray-700 mb-3">Side-by-Side Comparison</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* Current Image */}
+                    <div>
+                      <p className="text-xs text-gray-500 mb-2 font-medium">CURRENT IMAGE</p>
+                      <div className="aspect-square bg-white rounded-lg border-2 border-gray-200 overflow-hidden flex items-center justify-center">
+                        {previewProduct.images && previewProduct.images.length > 0 && previewProduct.images[0] ? (
+                          <img
+                            src={resolveImageUrl(previewProduct.images[0])}
+                            alt="Current"
+                            className="h-full w-full object-contain"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = 'none';
+                              e.currentTarget.parentElement!.innerHTML = '<span class="text-gray-400 text-sm">No current image</span>';
+                            }}
+                          />
+                        ) : (
+                          <span className="text-gray-400 text-sm">No current image</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Selected New Image */}
+                    <div>
+                      <p className="text-xs text-gray-500 mb-2 font-medium">
+                        NEW IMAGE
+                        <span className="ml-2 px-2 py-0.5 bg-pink-100 text-pink-700 rounded-full text-xs">
+                          {previewProduct.selectedImage.source}
+                        </span>
+                      </p>
+                      <div className="aspect-square bg-white rounded-lg border-2 border-pink-500 ring-2 ring-pink-200 overflow-hidden">
+                        <img
+                          src={previewProduct.selectedImage.url}
+                          alt="Selected"
+                          className="h-full w-full object-contain"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">Quality: {previewProduct.selectedImage.quality}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <p className="text-sm text-gray-600 mb-4">
                 Click on an image to select it, then save to assign it to the product.
               </p>
