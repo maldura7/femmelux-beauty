@@ -26,6 +26,9 @@ import {
 // Create Express application
 const app: Application = express();
 
+// Build version timestamp for cache busting
+const BUILD_VERSION = '2026-01-14-v2';
+
 // Initialize Sentry BEFORE other middleware
 initSentry();
 
