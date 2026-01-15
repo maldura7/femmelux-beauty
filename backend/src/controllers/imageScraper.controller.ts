@@ -242,18 +242,11 @@ export const fixBrokenPaths = async (_req: Request, res: Response): Promise<void
 // BACKGROUND JOB HANDLERS
 // ============================================
 
-interface AuthenticatedRequest extends Request {
-  user?: {
-    id: string;
-    role: string;
-  };
-}
-
 /**
  * Create a new background image scraping job
  * POST /api/image-scraper/jobs
  */
-export const createBackgroundJob = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+export const createBackgroundJob = async (req: Request, res: Response): Promise<void> => {
   try {
     const { brandId, categoryId, limit = 100 } = req.body;
     const userId = req.user?.id;
@@ -438,15 +431,11 @@ export const getImageHistory = async (req: Request, res: Response): Promise<void
       return;
     }
 
-    const history = await getProductImageHistory(productId);
+    const historyResult = await getProductImageHistory(productId);
 
     res.json({
       success: true,
-      data: {
-        productId,
-        history,
-        count: history.length,
-      },
+      data: historyResult,
     });
   } catch (error) {
     console.error('Get image history error:', error);
@@ -462,7 +451,7 @@ export const getImageHistory = async (req: Request, res: Response): Promise<void
  * Restore a previous image from history
  * POST /api/image-scraper/history/:productId/restore/:historyId
  */
-export const restoreImage = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+export const restoreImage = async (req: Request, res: Response): Promise<void> => {
   try {
     const { productId, historyId } = req.params;
     const userId = req.user?.id;

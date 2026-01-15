@@ -1,4 +1,4 @@
-import { PrismaClient, ImageScraperJobStatus } from '@prisma/client';
+import { PrismaClient, ImageScraperJobStatus, Prisma } from '@prisma/client';
 import { findAndAssignProductImage } from './imageScraper.service';
 
 const prisma = new PrismaClient();
@@ -185,8 +185,8 @@ async function processJobAsync(
           processed: i,
           successful,
           failed,
-          results: results as unknown as Record<string, unknown>[],
-          errorLog: errorLog as unknown as Record<string, unknown>[],
+          results: results as unknown as Prisma.JsonArray,
+          errorLog: errorLog as unknown as Prisma.JsonArray,
         },
       });
       return;
@@ -226,8 +226,8 @@ async function processJobAsync(
             processed: i + 1,
             successful,
             failed,
-            results: results as unknown as Record<string, unknown>[],
-            errorLog: errorLog as unknown as Record<string, unknown>[],
+            results: results as unknown as Prisma.JsonArray,
+            errorLog: errorLog as unknown as Prisma.JsonArray,
           },
         });
       }
@@ -252,8 +252,8 @@ async function processJobAsync(
       processed: products.length,
       successful,
       failed,
-      results: results as unknown as Record<string, unknown>[],
-      errorLog: errorLog as unknown as Record<string, unknown>[],
+      results: results as unknown as Prisma.JsonArray,
+      errorLog: errorLog as unknown as Prisma.JsonArray,
     },
   });
 
